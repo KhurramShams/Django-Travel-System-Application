@@ -1,0 +1,34 @@
+# Environments & Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+*.env
+*.local
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+backend/staticfiles/
+backend/media/
+backend/venv/
+venv/
+.venv/
+env/
+.pytest_cache/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+.npm
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
