@@ -85,22 +85,21 @@ export function Sidebar({ className }: SidebarProps) {
             collapsed={collapsed}
           />
           <NavItem
-            href="/bookings"
-            label="Bookings"
-            icon={CalendarCheck}
-            badge="12"
+            href="/travelers"
+            label="Travelers & Pilgrims"
+            icon={Users}
             collapsed={collapsed}
           />
           <NavItem
             href="/packages"
-            label="Packages"
+            label="Tour Packages"
             icon={Package}
             collapsed={collapsed}
           />
           <NavItem
-            href="/customers"
-            label="Pilgrims / Clients"
-            icon={Users}
+            href="/enrollments"
+            label="Package Enrollments"
+            icon={CalendarCheck}
             collapsed={collapsed}
           />
           <NavItem
@@ -116,20 +115,20 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="space-y-1">
           {!collapsed && (
             <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Finance
+              Finance & Accounts
             </p>
           )}
           <NavItem
-            href="/invoices"
-            label="Invoices & Billing"
+            href="/finance/travelers"
+            label="Traveler Accounts"
             icon={Receipt}
             roles={["Admin", "Accountant"]}
             currentRole={role}
             collapsed={collapsed}
           />
           <NavItem
-            href="/ledgers"
-            label="Ledgers & Accounts"
+            href="/finance/travelers/balances"
+            label="Remaining Balances"
             icon={Building2}
             roles={["Admin", "Accountant"]}
             currentRole={role}

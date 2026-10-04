@@ -7,6 +7,7 @@ import * as z from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
+import { api } from "@/lib/api/client";
 import {
   Card,
   CardHeader,
@@ -17,11 +18,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Lock, Mail, Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
+import { AlertCircle, Lock, User, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid business email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().min(1, "Please enter your username or email address"),
+  password: z.string().min(1, "Please enter your password"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -44,8 +45,8 @@ function LoginForm() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: "admin",
+      password: "admin123",
     },
   });
 
@@ -53,19 +54,51 @@ function LoginForm() {
     setIsSubmitting(true);
     setServerError(null);
 
+    const inputIdentifier = data.email.trim();
+    const inputPassword = data.password;
+
     try {
+      // Step 1: Direct backend authentication (supports admin / admin123)
+      try {
+        const res = await api.post<{
+          access_token: string;
+          user: Record<string, unknown>;
+          role: string;
+        }>("/auth/login/", {
+          username: inputIdentifier,
+          password: inputPassword,
+        });
+
+        if (res?.access_token) {
+          localStorage.setItem("test_auth_token", res.access_token);
+          localStorage.setItem("test_auth_user", JSON.stringify(res.user));
+          document.cookie = `test_auth_session=${encodeURIComponent(
+            inputIdentifier
+          )}; path=/; max-age=2592000; SameSite=Lax`;
+
+          await refreshProfile();
+          router.push(redirectTarget);
+          router.refresh();
+          return;
+        }
+      } catch (backendErr: unknown) {
+        console.warn("Backend auth/login attempt:", backendErr);
+      }
+
+      // Step 2: Supabase Auth fallback
       const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
+        email: inputIdentifier,
+        password: inputPassword,
       });
 
       if (error) {
-        setServerError(error.message);
+        setServerError(
+          "Invalid credentials. For quick testing, use username 'admin' and password 'admin123'."
+        );
         return;
       }
 
       if (authData.session) {
-        // Refresh local user profile via context
         await refreshProfile();
         router.push(redirectTarget);
         router.refresh();
@@ -80,16 +113,16 @@ function LoginForm() {
 
   const setDemoCredentials = (role: "admin" | "agent" | "accountant") => {
     const credentials = {
-      admin: { email: "admin@karwan-travels.com", pass: "Admin@123456" },
-      agent: { email: "agent@karwan-travels.com", pass: "Agent@123456" },
-      accountant: { email: "accountant@karwan-travels.com", pass: "Accountant@123456" },
+      admin: { email: "admin", pass: "admin123" },
+      agent: { email: "agent", pass: "agent123" },
+      accountant: { email: "accountant", pass: "accountant123" },
     };
     setValue("email", credentials[role].email, { shouldValidate: true });
     setValue("password", credentials[role].pass, { shouldValidate: true });
   };
 
   return (
-    <Card className="border-slate-800 bg-slate-900/90 text-white shadow-2xl backdrop-blur-md">
+    <Card className="border-slate-800 bg-slate-900/95 text-white shadow-2xl backdrop-blur-md">
       <CardHeader className="space-y-2 text-center">
         <CardTitle className="text-2xl font-bold tracking-tight text-white">
           Sign In to System
@@ -101,6 +134,23 @@ function LoginForm() {
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
+          {/* Active Testing Notice */}
+          <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+              <span>
+                Test Login: <strong className="font-semibold text-white">admin</strong> / <strong className="font-semibold text-white">admin123</strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDemoCredentials("admin")}
+              className="rounded bg-emerald-600/40 px-2 py-0.5 text-[11px] font-medium text-emerald-200 hover:bg-emerald-600 hover:text-white transition-colors"
+            >
+              Prefill
+            </button>
+          </div>
+
           {/* Error Banner */}
           {serverError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-red-500/40 bg-red-950/40 p-3 text-xs text-red-300">
@@ -109,17 +159,17 @@ function LoginForm() {
             </div>
           )}
 
-          {/* Email Field */}
+          {/* Email / Username Field */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-300" htmlFor="email">
-              Work Email Address
+              Username or Work Email
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 id="email"
-                type="email"
-                placeholder="name@karwan-travels.com"
+                type="text"
+                placeholder="admin or name@karwan-travels.com"
                 className="border-slate-700 bg-slate-950/70 pl-9 text-white placeholder:text-slate-500 focus-visible:ring-emerald-500"
                 error={!!errors.email}
                 {...register("email")}
