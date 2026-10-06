@@ -41,5 +41,6 @@ urlpatterns = [
     path("api/v1/travelers/", include("apps.travelers.urls", namespace="travelers")),
     path("api/v1/tickets/", include("apps.ticketing.urls", namespace="ticketing")),
     path("api/v1/hotels/", include("apps.hotels.urls", namespace="hotels")),
+    path("api/v1/finance/", include("apps.finance.urls", namespace="finance")),
     path("api/v1/", include("apps.packages.urls", namespace="packages")),
 ]

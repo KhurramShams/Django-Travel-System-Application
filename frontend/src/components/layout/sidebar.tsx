@@ -22,6 +22,10 @@ import {
   RotateCcw,
   Hotel,
   BedDouble,
+  Landmark,
+  CreditCard,
+  PlusCircle,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -175,6 +179,38 @@ export function Sidebar({ className }: SidebarProps) {
             href="/finance/travelers/balances"
             label="Remaining Balances"
             icon={Building2}
+            roles={["Admin", "Accountant"]}
+            currentRole={role}
+            collapsed={collapsed}
+          />
+          <NavItem
+            href="/finance/payments"
+            label="Office Payments"
+            icon={CreditCard}
+            roles={["Admin", "Accountant"]}
+            currentRole={role}
+            collapsed={collapsed}
+          />
+          <NavItem
+            href="/finance/payments/new"
+            label="Record Payment"
+            icon={PlusCircle}
+            roles={["Admin", "Accountant"]}
+            currentRole={role}
+            collapsed={collapsed}
+          />
+          <NavItem
+            href="/finance/expenses"
+            label="Daily Expenses"
+            icon={Wallet}
+            roles={["Admin", "Accountant"]}
+            currentRole={role}
+            collapsed={collapsed}
+          />
+          <NavItem
+            href="/finance/accounts"
+            label="Bank Accounts"
+            icon={Landmark}
             roles={["Admin", "Accountant"]}
             currentRole={role}
             collapsed={collapsed}
