@@ -39,5 +39,7 @@ urlpatterns = [
     path("api/v1/health/", health_check, name="health-check"),
     path("api/v1/auth/", include("apps.authentication.urls", namespace="authentication")),
     path("api/v1/travelers/", include("apps.travelers.urls", namespace="travelers")),
+    path("api/v1/tickets/", include("apps.ticketing.urls", namespace="ticketing")),
+    path("api/v1/hotels/", include("apps.hotels.urls", namespace="hotels")),
     path("api/v1/", include("apps.packages.urls", namespace="packages")),
 ]

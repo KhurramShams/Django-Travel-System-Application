@@ -92,10 +92,26 @@ class TravelPackageDetailView(generics.RetrieveUpdateDestroyAPIView):
         self.perform_update(serializer)
         return Response(TravelPackageSerializer(instance).data)
 
-    def perform_destroy(self, instance):
-        # Soft-archive instead of hard-delete to safeguard audit contracts
-        instance.status = PackageStatus.ARCHIVED
-        instance.save(update_fields=["status", "updated_at"])
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        active_enrolled_count = instance.enrollments.filter(status=EnrollmentStatus.ACTIVE).count()
+        if active_enrolled_count > 0:
+            return Response(
+                {
+                    "detail": f"Cannot delete package with {active_enrolled_count} active enrolled traveler(s). Remove travelers from package roster first.",
+                    "error": f"Cannot delete package with {active_enrolled_count} active enrolled traveler(s). Remove travelers from package roster first.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        force = request.query_params.get("force") == "true"
+        if instance.enrollments.exists() and not force:
+            instance.status = PackageStatus.ARCHIVED
+            instance.save(update_fields=["status", "updated_at"])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        if force:
+            instance.enrollments.all().delete()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TravelPackageRosterView(APIView):
@@ -180,17 +196,40 @@ class PackageEnrollmentListCreateView(generics.ListCreateAPIView):
         )
 
 
-class PackageEnrollmentDetailView(generics.RetrieveUpdateAPIView):
-    """Retrieve full enrollment contract and payment ledger or modify charges."""
+class PackageEnrollmentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve full enrollment contract, modify charges, or remove traveler from package."""
 
-    permission_classes = [IsAgent]
+    lookup_field = "pk"
+
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH", "DELETE"]:
+            return [IsAdmin()]
+        return [IsAgent()]
+
     queryset = (
         PackageEnrollment.objects.all()
         .select_related("traveler", "package", "created_by")
         .prefetch_related("payments", "traveler__dependents")
     )
     serializer_class = PackageEnrollmentDetailSerializer
-    lookup_field = "pk"
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        force = request.query_params.get("force") == "true"
+        if instance.payments.exists() and not force:
+            return Response(
+                {
+                    "detail": f"This traveler has PKR {instance.total_paid} recorded payments on this enrollment. Confirm removal with force=true to delete financial vouchers or cancel the enrollment instead.",
+                    "error": f"This traveler has PKR {instance.total_paid} recorded payments on this enrollment. Confirm removal with force=true to delete financial vouchers or cancel the enrollment instead.",
+                    "total_paid": str(instance.total_paid),
+                    "payments_count": instance.payments.count(),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if force:
+            instance.payments.all().delete()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PackageEnrollmentCancelView(APIView):

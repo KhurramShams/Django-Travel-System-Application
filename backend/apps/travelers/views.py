@@ -4,7 +4,8 @@ from django.db import models
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from apps.authentication.permissions import IsAgent
+from apps.authentication.permissions import IsAdmin, IsAgent
+from apps.packages.models import EnrollmentStatus
 from .models import Traveler, AgeCategory
 from .serializers import (
     TravelerSerializer,
@@ -59,13 +60,17 @@ class TravelerListCreateView(generics.ListCreateAPIView):
 class TravelerDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Retrieve full traveler dossier, update profile details, or archive profile."""
 
-    permission_classes = [IsAgent]
     queryset = (
         Traveler.objects.all()
         .select_related("guardian")
         .prefetch_related("dependents", "enrollments__package")
     )
     lookup_field = "pk"
+
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH", "DELETE"]:
+            return [IsAdmin()]
+        return [IsAgent()]
 
     def get_serializer_class(self):
         if self.request.method in ["PUT", "PATCH"]:
@@ -79,6 +84,26 @@ class TravelerDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(TravelerSerializer(instance).data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Prevent deletion if active package enrollments exist
+        active_enrollments = instance.enrollments.filter(status=EnrollmentStatus.ACTIVE)
+        if active_enrollments.exists():
+            pkg_title = active_enrollments.first().package.title
+            return Response(
+                {
+                    "detail": f"Cannot delete traveler enrolled in active package '{pkg_title}'. Remove traveler from the package first.",
+                    "error": f"Cannot delete traveler enrolled in active package '{pkg_title}'. Remove traveler from the package first.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Reassign dependents to avoid orphan foreign key errors
+        instance.dependents.update(guardian=None)
+        # Clean historical/cancelled enrollments
+        instance.enrollments.all().delete()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TravelerLookupView(APIView):

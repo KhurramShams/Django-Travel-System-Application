@@ -21,11 +21,19 @@ import {
   Loader2,
   Calendar,
   AlertCircle,
+  Edit3,
+  Trash2,
 } from "lucide-react";
+import { EditTravelerModal } from "@/components/travelers/edit-traveler-modal";
+import { DeleteTravelerDialog } from "@/components/travelers/delete-traveler-dialog";
 
 export default function TravelersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedAge, setSelectedAge] = useState<string>("ALL");
+  const [selectedTravelerForEdit, setSelectedTravelerForEdit] = useState<Traveler | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTravelerForDelete, setSelectedTravelerForDelete] = useState<Traveler | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const { data: rawTravelers, isLoading, error } = useQuery({
     queryKey: ["travelers", searchTerm, selectedAge],
@@ -224,12 +232,40 @@ export default function TravelersPage() {
                         )}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Link href={`/travelers/${t.id}`}>
-                          <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
-                            View Dossier
-                            <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-slate-700 hover:text-emerald-700 hover:border-emerald-300 dark:text-slate-200"
+                            onClick={() => {
+                              setSelectedTravelerForEdit(t);
+                              setIsEditModalOpen(true);
+                            }}
+                            title="Edit traveler profile"
+                          >
+                            <Edit3 className="mr-1 h-3 w-3 text-emerald-600" />
+                            Edit
                           </Button>
-                        </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-950/40"
+                            onClick={() => {
+                              setSelectedTravelerForDelete(t);
+                              setIsDeleteModalOpen(true);
+                            }}
+                            title="Delete traveler profile"
+                          >
+                            <Trash2 className="mr-1 h-3 w-3 text-rose-500" />
+                            Delete
+                          </Button>
+                          <Link href={`/travelers/${t.id}`}>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                              Dossier
+                              <ChevronRight className="ml-1 h-3 w-3" />
+                            </Button>
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -239,6 +275,26 @@ export default function TravelersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Traveler Modal */}
+      <EditTravelerModal
+        traveler={selectedTravelerForEdit}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedTravelerForEdit(null);
+        }}
+      />
+
+      {/* Delete Traveler Dialog */}
+      <DeleteTravelerDialog
+        traveler={selectedTravelerForDelete}
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedTravelerForDelete(null);
+        }}
+      />
     </div>
   );
 }

@@ -159,6 +159,7 @@ class PackageEnrollmentListSerializer(serializers.ModelSerializer):
     traveler_name = serializers.CharField(source="traveler.full_name", read_only=True)
     traveler_cnic = serializers.CharField(source="traveler.cnic", read_only=True)
     traveler_phone = serializers.CharField(source="traveler.phone_number", read_only=True)
+    traveler_passport = serializers.CharField(source="traveler.passport_number", read_only=True, default=None)
     traveler_age_category = serializers.CharField(source="traveler.age_category", read_only=True)
     package_title = serializers.CharField(source="package.title", read_only=True)
     package_code = serializers.CharField(source="package.package_code", read_only=True)
@@ -177,6 +178,7 @@ class PackageEnrollmentListSerializer(serializers.ModelSerializer):
             "traveler_name",
             "traveler_cnic",
             "traveler_phone",
+            "traveler_passport",
             "traveler_age_category",
             "package_id",
             "package_title",

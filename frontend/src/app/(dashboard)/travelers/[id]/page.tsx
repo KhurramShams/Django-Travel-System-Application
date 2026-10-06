@@ -1,7 +1,8 @@
 "use client";
 
-import React, { use } from "react";
+import React, { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { travelersApi } from "@/lib/api/travel";
 import { Traveler } from "@/types/travel";
@@ -23,7 +24,13 @@ import {
   Calendar,
   Building,
   CheckCircle2,
+  Edit3,
+  Trash2,
+  UserMinus,
 } from "lucide-react";
+import { EditTravelerModal } from "@/components/travelers/edit-traveler-modal";
+import { DeleteTravelerDialog } from "@/components/travelers/delete-traveler-dialog";
+import { RemoveTravelerDialog } from "@/components/enrollments/remove-traveler-dialog";
 
 export default function TravelerDetailPage({
   params,
@@ -31,6 +38,11 @@ export default function TravelerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRemoveFromPackageOpen, setIsRemoveFromPackageOpen] = useState(false);
 
   const { data: traveler, isLoading, error } = useQuery({
     queryKey: ["traveler", id],
@@ -89,19 +101,37 @@ export default function TravelerDetailPage({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="font-semibold shadow-xs text-xs"
+            onClick={() => setIsEditModalOpen(true)}
+          >
+            <Edit3 className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
+            Edit Profile
+          </Button>
+
+          <Button
+            variant="outline"
+            className="font-semibold shadow-xs text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-950/40"
+            onClick={() => setIsDeleteModalOpen(true)}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5 text-rose-500" />
+            Delete Traveler
+          </Button>
+
           {!traveler.has_active_package ? (
             <Link href={`/enrollments/new?traveler_id=${traveler.id}`}>
-              <Button variant="brand" className="font-semibold shadow-xs">
-                <Plane className="mr-2 h-4 w-4" />
+              <Button variant="brand" className="font-semibold shadow-xs text-xs">
+                <Plane className="mr-1.5 h-3.5 w-3.5" />
                 Enroll in Package
               </Button>
             </Link>
           ) : (
             <Link href={`/finance/invoice/${traveler.active_enrollment_id}`}>
-              <Button variant="outline" className="font-semibold shadow-xs">
-                <FileText className="mr-2 h-4 w-4" />
-                View Invoice Voucher
+              <Button variant="outline" className="font-semibold shadow-xs text-xs">
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                Invoice Voucher
               </Button>
             </Link>
           )}
@@ -251,6 +281,16 @@ export default function TravelerDetailPage({
                     Locked (1 Active Tour)
                   </span>
                 </div>
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="w-full text-xs mt-2"
+                  onClick={() => setIsRemoveFromPackageOpen(true)}
+                >
+                  <UserMinus className="mr-1.5 h-3.5 w-3.5" />
+                  Remove from Package
+                </Button>
               </div>
             ) : (
               <div className="text-center p-6 border border-dashed rounded-lg text-slate-400 space-y-2">
@@ -339,6 +379,31 @@ export default function TravelerDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Traveler Modal */}
+      <EditTravelerModal
+        traveler={traveler}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
+
+      {/* Delete Traveler Confirmation Dialog */}
+      <DeleteTravelerDialog
+        traveler={traveler}
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onSuccess={() => router.push("/travelers")}
+      />
+
+      {/* Remove Traveler from Active Package Dialog */}
+      <RemoveTravelerDialog
+        enrollmentId={traveler.active_enrollment_id || null}
+        travelerName={traveler.full_name}
+        packageTitle={traveler.active_package_title || "Active Package"}
+        travelerId={traveler.id}
+        isOpen={isRemoveFromPackageOpen}
+        onClose={() => setIsRemoveFromPackageOpen(false)}
+      />
     </div>
   );
 }
