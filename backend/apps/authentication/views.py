@@ -1,5 +1,8 @@
 """Authentication and User management views."""
 
+import datetime
+import jwt
+from django.conf import settings
 from django.db import models
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -115,3 +118,99 @@ class SyncUserView(APIView):
             },
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
+
+
+class LoginView(APIView):
+    """Testing & Standard authentication endpoint supporting username 'admin' and password 'admin123'."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username") or request.data.get("email", "")
+        password = request.data.get("password", "")
+
+        username = str(username).strip().lower()
+
+        # Support test credentials
+        is_admin_test = (username in ["admin", "admin@karwan-travels.com"] and password == "admin123")
+        is_agent_test = (username in ["agent", "agent@karwan-travels.com"] and password in ["agent123", "Agent@123456"])
+        is_accountant_test = (username in ["accountant", "accountant@karwan-travels.com"] and password in ["accountant123", "Accountant@123456"])
+
+        if not (is_admin_test or is_agent_test or is_accountant_test):
+            return Response(
+                {"error": "Invalid username or password. For testing use username 'admin' and password 'admin123'"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if is_admin_test:
+            role = RoleChoices.ADMIN
+            email = "admin@karwan-travels.com"
+            first_name = "System"
+            last_name = "Admin"
+            uid = "00000000-0000-0000-0000-000000000001"
+        elif is_agent_test:
+            role = RoleChoices.AGENT
+            email = "agent@karwan-travels.com"
+            first_name = "Operations"
+            last_name = "Agent"
+            uid = "00000000-0000-0000-0000-000000000002"
+        else:
+            role = RoleChoices.ACCOUNTANT
+            email = "accountant@karwan-travels.com"
+            first_name = "Finance"
+            last_name = "Accountant"
+            uid = "00000000-0000-0000-0000-000000000003"
+
+        user, _ = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "supabase_uid": uid,
+                "first_name": first_name,
+                "last_name": last_name,
+                "role": role,
+                "is_active": True,
+            },
+        )
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+        if user.role != role:
+            user.role = role
+            user.save(update_fields=["role"])
+
+        jwt_secret = getattr(
+            settings,
+            "SUPABASE_JWT_SECRET",
+            "super-secret-jwt-token-with-at-least-32-characters-for-supabase-hs256",
+        )
+        algorithm = getattr(settings, "SUPABASE_JWT_ALGORITHM", "HS256")
+        now = datetime.datetime.now(datetime.timezone.utc)
+        exp = now + datetime.timedelta(days=30)
+
+        payload = {
+            "sub": str(user.supabase_uid),
+            "email": user.email,
+            "role": "authenticated",
+            "aud": "authenticated",
+            "app_metadata": {"role": user.role},
+            "user_metadata": {
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "role": user.role,
+            },
+            "iat": int(now.timestamp()),
+            "exp": int(exp.timestamp()),
+        }
+
+        token = jwt.encode(payload, jwt_secret, algorithm=algorithm)
+        if isinstance(token, bytes):
+            token = token.decode("utf-8")
+
+        return Response(
+            {
+                "access_token": token,
+                "user": UserSerializer(user).data,
+                "role": user.role,
+            }
+        )
+

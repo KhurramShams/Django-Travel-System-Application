@@ -64,6 +64,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function initializeAuth() {
       try {
+        // Priority 1: Check test auth credentials
+        const testToken = localStorage.getItem("test_auth_token");
+        const testUserStr = localStorage.getItem("test_auth_user");
+        if (testToken && testUserStr && mounted) {
+          try {
+            const parsedUser = JSON.parse(testUserStr) as UserProfile;
+            setUser(parsedUser);
+            setSession({
+              accessToken: testToken,
+              refreshToken: "test-refresh-token",
+              expiresAt: Math.floor(Date.now() / 1000) + 86400 * 30,
+            });
+            // Verify and refresh with backend
+            fetchBackendProfile().catch(() => {});
+            setIsLoading(false);
+            return;
+          } catch (e) {
+            console.error("Failed to parse test user:", e);
+          }
+        }
+
+        // Priority 2: Check Supabase session
         const {
           data: { session: initialSession },
         } = await supabase.auth.getSession();
@@ -93,6 +115,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
 
+      // If test token is present, preserve it
+      if (localStorage.getItem("test_auth_token")) {
+        return;
+      }
+
       if (newSession) {
         setSession({
           accessToken: newSession.access_token,
@@ -119,6 +146,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setIsLoading(true);
+      // Clear test session
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("test_auth_token");
+        localStorage.removeItem("test_auth_user");
+        document.cookie = "test_auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      }
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);

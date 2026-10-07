@@ -9,7 +9,13 @@ export default function AuthLayout({
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-center items-center p-4 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 text-white">
       {/* Background geometric pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(#15803d_1px,transparent_1px)] [background-size:24px_24px] opacity-20 pointer-events-none" />
+      <div
+        className="absolute inset-0 opacity-20 pointer-events-none"
+        style={{
+          backgroundImage: "radial-gradient(#15803d 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
 
       {/* Header Brand */}
       <div className="relative z-10 mb-8 flex items-center gap-3">

@@ -37,6 +37,8 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.common.apps.CommonConfig",
     "apps.authentication.apps.AuthenticationConfig",
+    "apps.travelers.apps.TravelersConfig",
+    "apps.packages.apps.PackagesConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

@@ -14,11 +14,19 @@ export const apiClient = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor: Inject Supabase JWT access token
+// Request interceptor: Inject test auth token or Supabase JWT access token
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
       if (typeof window !== "undefined") {
+        // Priority 1: Direct test/admin auth token
+        const testToken = localStorage.getItem("test_auth_token");
+        if (testToken) {
+          config.headers.Authorization = `Bearer ${testToken}`;
+          return config;
+        }
+
+        // Priority 2: Supabase session token
         const supabase = createClient();
         const {
           data: { session },
@@ -29,7 +37,7 @@ apiClient.interceptors.request.use(
         }
       }
     } catch (err) {
-      console.warn("Could not retrieve Supabase session for API request:", err);
+      console.warn("Could not retrieve session for API request:", err);
     }
     return config;
   },
