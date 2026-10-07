@@ -8,6 +8,7 @@ import { AgencyTicket, TicketStatus } from "@/types/ticketing";
 import { RefundProcessingModal } from "@/components/ticketing/refund-modal";
 import { EditTicketModal } from "@/components/ticketing/edit-ticket-modal";
 import { DeleteTicketDialog } from "@/components/ticketing/delete-ticket-dialog";
+import { useAuth } from "@/components/providers/auth-provider";
 import {
   Card,
   CardHeader,
@@ -37,6 +38,8 @@ import {
 } from "lucide-react";
 
 export default function TicketsListPage() {
+  const { role } = useAuth();
+  const isAdmin = role === "Admin";
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedTicketForRefund, setSelectedTicketForRefund] = useState<AgencyTicket | null>(null);
@@ -327,7 +330,7 @@ export default function TicketsListPage() {
                               variant="outline"
                               onClick={() => handleOpenEdit(t)}
                               className="text-[11px] h-7 px-2 text-slate-700 hover:text-emerald-700 hover:border-emerald-300 dark:text-slate-200"
-                              title="Edit airline ticket details"
+                              title={isAdmin ? "Edit airline ticket details" : "Administrator privileges required to edit ticket"}
                             >
                               <Edit3 className="mr-1 h-3 w-3 text-emerald-600" />
                               Edit
@@ -337,7 +340,7 @@ export default function TicketsListPage() {
                               variant="outline"
                               onClick={() => handleOpenDelete(t)}
                               className="text-[11px] h-7 px-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-950/40"
-                              title="Delete airline ticket"
+                              title={isAdmin ? "Delete airline ticket" : "Administrator privileges required to delete ticket"}
                             >
                               <Trash2 className="mr-1 h-3 w-3 text-rose-500" />
                               Delete

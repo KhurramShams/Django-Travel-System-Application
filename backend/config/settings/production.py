@@ -1,4 +1,4 @@
-"""Production settings for Karwan-e-Asotvi Travels backend."""
+"""Production settings for Khas Travels backend."""
 
 import os
 from .base import *  # noqa: F401, F403

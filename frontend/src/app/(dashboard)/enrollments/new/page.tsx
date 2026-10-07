@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toast";
 import {
   FileText,
   ArrowLeft,
@@ -26,6 +27,7 @@ import {
 
 function EnrollmentForm() {
   const router = useRouter();
+  const toast = useToast();
   const searchParams = useSearchParams();
   const preselectedTravelerId = searchParams.get("traveler_id");
   const preselectedPackageId = searchParams.get("package_id");
@@ -120,7 +122,9 @@ function EnrollmentForm() {
   }, [selectedPackage, selectedTraveler]);
 
   // Computed final agreed total
-  const finalAgreedPrice = Math.max(0, basePrice + Number(extraAmount) - Number(discount));
+  const finalAgreedPrice = React.useMemo(() => {
+    return Math.max(0, Number(basePrice) + Number(extraAmount) - Number(discount));
+  }, [basePrice, extraAmount, discount]);
 
   const selectTraveler = (t: TravelerLookup) => {
     setSelectedTraveler(t);
@@ -161,6 +165,10 @@ function EnrollmentForm() {
         special_requests: specialRequests,
       });
 
+      toast.success(
+        "Enrollment Created",
+        `Enrollment #${created.enrollment_number} registered successfully.`
+      );
       router.push(`/finance/invoice/${created.id}`);
     } catch (err: any) {
       console.error("Enrollment error:", err);
@@ -180,6 +188,7 @@ function EnrollmentForm() {
         msg = Array.isArray(resData.non_field_errors) ? resData.non_field_errors.join(" ") : String(resData.non_field_errors);
       }
       setServerError(msg);
+      toast.error("Enrollment Failed", msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -477,6 +486,7 @@ function EnrollmentForm() {
               type="submit"
               variant="brand"
               isLoading={isSubmitting}
+              loadingText="Executing Enrollment..."
               disabled={isBlockedByActivePackage || !selectedTraveler || !selectedPackage}
             >
               {isBlockedByActivePackage ? "Cannot Enroll (Blocked)" : "Execute Enrollment Contract"}

@@ -54,7 +54,7 @@ class FinanceModuleTests(TestCase):
         # Create base test Bank Account
         self.bank = BankAccount.objects.create(
             bank_name="Meezan Bank",
-            account_name="Karwan-e-Asotvi Travels",
+            account_name="Khas Travels",
             account_number="PK12MEZN00012345678901",
             branch_code="0101",
             current_balance=Decimal("100000.00"),

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { enrollmentsApi } from "@/lib/api/travel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PDFHeader, PDFFooter } from "@/components/pdf";
 import {
   Printer,
   ArrowLeft,
@@ -81,45 +82,20 @@ export default function InvoicePage({
 
       {/* Printable Invoice Sheet */}
       <div className="mx-auto max-w-4xl bg-white p-8 sm:p-12 shadow-lg rounded-2xl border border-slate-200 text-slate-900 print:shadow-none print:border-none print:p-0 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100">
-        {/* Header Branding */}
-        <div className="flex justify-between items-start border-b-2 border-emerald-700 pb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-white">
-                <Plane className="h-5 w-5 -rotate-45" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {invoice.agency.name}
-              </h1>
-            </div>
-            <p className="text-xs text-emerald-800 font-semibold dark:text-emerald-400">
-              {invoice.agency.tagline}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1 max-w-xs">
-              {invoice.agency.address} • {invoice.agency.contact}
-            </p>
-          </div>
-
-          <div className="text-right">
-            <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate-400 block">
-              Official Client Voucher
-            </span>
-            <span className="font-mono text-lg font-bold text-emerald-800 dark:text-emerald-400">
-              {invoice.invoice.enrollment_number}
-            </span>
-            <p className="text-xs text-slate-500 mt-1">
-              Issue Date: <span className="font-medium text-slate-800 dark:text-slate-200">{invoice.invoice.issue_date}</span>
-            </p>
-            <div className="mt-2 flex justify-end">
-              <Badge
-                variant={invoice.financials.is_fully_paid ? "success" : "warning"}
-                className="text-xs uppercase font-bold"
-              >
-                Payment: {invoice.invoice.payment_status}
-              </Badge>
-            </div>
-          </div>
-        </div>
+        {/* Unified Agency Header */}
+        <PDFHeader
+          docTitle="Official Client Voucher"
+          docNumber={invoice.invoice.enrollment_number}
+          issueDate={invoice.invoice.issue_date}
+          rightContent={
+            <Badge
+              variant={invoice.financials.is_fully_paid ? "success" : "warning"}
+              className="text-xs uppercase font-bold"
+            >
+              Payment: {invoice.invoice.payment_status}
+            </Badge>
+          }
+        />
 
         {/* Client & Itinerary Grid */}
         <div className="grid grid-cols-2 gap-8 py-6 border-b border-slate-200 text-xs dark:border-slate-800">
@@ -305,25 +281,23 @@ export default function InvoicePage({
           </div>
         </div>
 
-        {/* Footer & Signatures */}
-        <div className="pt-8 flex justify-between items-end text-xs text-slate-500">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Terms & Conditions:</p>
-            <p className="text-[10px] text-slate-400 max-w-sm mt-0.5">
-              1. Visa clearance is subject to approval from the Ministry of Hajj & Umrah, Saudi Arabia.
-              2. Cancellations or changes to hotel vouchers are governed by agency group travel policies.
-            </p>
-          </div>
-
-          <div className="flex gap-8 text-center text-[10px] text-slate-400 font-medium">
-            <div className="w-28 pt-8 border-t border-slate-300 dark:border-slate-700">
-              Customer Signature
+        {/* Unified Agency Footer & Signatures */}
+        <PDFFooter
+          terms={
+            <div>
+              <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Terms & Conditions:</p>
+              <p className="text-[10px] text-slate-400 max-w-lg mt-0.5">
+                1. Visa clearance is subject to approval from the Ministry of Hajj & Umrah, Saudi Arabia.
+                2. Cancellations or alterations to package/hotel vouchers are governed by agency group travel policies.
+              </p>
             </div>
-            <div className="w-28 pt-8 border-t border-slate-300 dark:border-slate-700">
-              Authorized Agent
-            </div>
-          </div>
-        </div>
+          }
+          signatures={[
+            { title: "Customer Signature", subtitle: "Pilgrim / Representative" },
+            { title: "Authorized Agent", subtitle: "Khas Travels Office" },
+          ]}
+          note="This is an official system generated booking voucher. Any manual alterations or overwriting render this document invalid."
+        />
       </div>
     </div>
   );

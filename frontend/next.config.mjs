@@ -10,6 +10,29 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.output = {
+        ...config.output,
+        chunkLoadTimeout: 60000,
+      };
+    }
+    return config;
+  },
+  async redirects() {
+    return [
+      {
+        source: '/settings',
+        destination: '/',
+        permanent: false,
+      },
+      {
+        source: '/admin/settings',
+        destination: '/',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

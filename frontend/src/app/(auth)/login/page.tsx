@@ -5,9 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { api } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/utils";
 import {
   Card,
   CardHeader,
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Lock, User, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from "lucide-react";
+import { AlertCircle, Lock, User, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Please enter your username or email address"),
@@ -30,127 +30,83 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTarget = searchParams.get("redirect") || "/";
   const { refreshProfile } = useAuth();
-  const supabase = createClient();
 
   const {
     register,
     handleSubmit,
     setValue,
-    formState: { errors },
+    formState: { errors, isSubmitting: isFormSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "admin",
-      password: "admin123",
+      email: "",
+      password: "",
     },
   });
 
+  const isLoading = isAuthenticating || isFormSubmitting;
+
   const onSubmit = async (data: LoginFormValues) => {
-    setIsSubmitting(true);
+    setIsAuthenticating(true);
     setServerError(null);
 
     const inputIdentifier = data.email.trim();
     const inputPassword = data.password;
 
     try {
-      // Step 1: Direct backend authentication (supports admin / admin123)
-      try {
-        const res = await api.post<{
-          access_token: string;
-          user: Record<string, unknown>;
-          role: string;
-        }>("/auth/login/", {
-          username: inputIdentifier,
-          password: inputPassword,
-        });
-
-        if (res?.access_token) {
-          localStorage.setItem("test_auth_token", res.access_token);
-          localStorage.setItem("test_auth_user", JSON.stringify(res.user));
-          document.cookie = `test_auth_session=${encodeURIComponent(
-            inputIdentifier
-          )}; path=/; max-age=2592000; SameSite=Lax`;
-
-          await refreshProfile();
-          router.push(redirectTarget);
-          router.refresh();
-          return;
-        }
-      } catch (backendErr: unknown) {
-        console.warn("Backend auth/login attempt:", backendErr);
-      }
-
-      // Step 2: Supabase Auth fallback
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      const res = await api.post<{
+        access_token: string;
+        user: Record<string, unknown>;
+        role: string;
+      }>("/auth/login/", {
         email: inputIdentifier,
         password: inputPassword,
       });
 
-      if (error) {
-        setServerError(
-          "Invalid credentials. For quick testing, use username 'admin' and password 'admin123'."
-        );
-        return;
-      }
+      if (res?.access_token) {
+        localStorage.setItem("auth_token", res.access_token);
+        localStorage.setItem("auth_user", JSON.stringify(res.user));
+        document.cookie = `auth_token=${encodeURIComponent(
+          res.access_token
+        )}; path=/; max-age=2592000; SameSite=Lax`;
 
-      if (authData.session) {
         await refreshProfile();
+        // Keep loading state active while the router completes transition to the target page
         router.push(redirectTarget);
         router.refresh();
+      } else {
+        setServerError("Authentication failed. Invalid response from server.");
+        setIsAuthenticating(false);
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error("Login failure:", err);
-      setServerError("An unexpected error occurred during sign in. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      const errorMsg = getErrorMessage(
+        err,
+        "Invalid username/email or password. Please verify your credentials."
+      );
+      setServerError(errorMsg);
+      setIsAuthenticating(false);
     }
   };
 
-  const setDemoCredentials = (role: "admin" | "agent" | "accountant") => {
-    const credentials = {
-      admin: { email: "admin", pass: "admin123" },
-      agent: { email: "agent", pass: "agent123" },
-      accountant: { email: "accountant", pass: "accountant123" },
-    };
-    setValue("email", credentials[role].email, { shouldValidate: true });
-    setValue("password", credentials[role].pass, { shouldValidate: true });
-  };
-
   return (
-    <Card className="border-slate-800 bg-slate-900/95 text-white shadow-2xl backdrop-blur-md">
-      <CardHeader className="space-y-2 text-center">
+    <Card className="border-slate-800/80 bg-slate-900/95 text-white shadow-2xl backdrop-blur-md rounded-2xl">
+      <CardHeader className="space-y-1.5 text-center pb-4">
         <CardTitle className="text-2xl font-bold tracking-tight text-white">
           Sign In to System
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-slate-400 text-xs">
           Enter your authorized enterprise credentials to access management portal
         </CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
-          {/* Active Testing Notice */}
-          <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
-              <span>
-                Test Login: <strong className="font-semibold text-white">admin</strong> / <strong className="font-semibold text-white">admin123</strong>
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setDemoCredentials("admin")}
-              className="rounded bg-emerald-600/40 px-2 py-0.5 text-[11px] font-medium text-emerald-200 hover:bg-emerald-600 hover:text-white transition-colors"
-            >
-              Prefill
-            </button>
-          </div>
-
           {/* Error Banner */}
           {serverError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-red-500/40 bg-red-950/40 p-3 text-xs text-red-300">
@@ -169,8 +125,9 @@ function LoginForm() {
               <Input
                 id="email"
                 type="text"
-                placeholder="admin or name@karwan-travels.com"
-                className="border-slate-700 bg-slate-950/70 pl-9 text-white placeholder:text-slate-500 focus-visible:ring-emerald-500"
+                placeholder="admin or name@khastravels.com"
+                disabled={isLoading}
+                className="border-slate-700/80 bg-slate-950/70 pl-9 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500 transition-colors disabled:opacity-50"
                 error={!!errors.email}
                 {...register("email")}
               />
@@ -193,14 +150,16 @@ function LoginForm() {
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••••••"
-                className="border-slate-700 bg-slate-950/70 pl-9 pr-10 text-white placeholder:text-slate-500 focus-visible:ring-emerald-500"
+                disabled={isLoading}
+                className="border-slate-700/80 bg-slate-950/70 pl-9 pr-10 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500 transition-colors disabled:opacity-50"
                 error={!!errors.password}
                 {...register("password")}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                disabled={isLoading}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer disabled:pointer-events-none"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -210,51 +169,55 @@ function LoginForm() {
               <p className="text-[11px] text-red-400">{errors.password.message}</p>
             )}
           </div>
-
-          {/* RBAC Autofill Quick Selector */}
-          <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 mb-2 text-slate-400">
-              <KeyRound className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="text-[11px] font-medium">Quick Credentials Preset:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setDemoCredentials("admin")}
-                className="text-[11px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 transition-colors"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoCredentials("agent")}
-                className="text-[11px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 transition-colors"
-              >
-                Agent
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoCredentials("accountant")}
-                className="text-[11px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition-colors"
-              >
-                Accountant
-              </button>
-            </div>
-          </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-3">
+        <CardFooter className="flex flex-col gap-4 pt-1">
           <Button
             type="submit"
             variant="brand"
-            className="w-full text-sm font-semibold tracking-wide"
-            isLoading={isSubmitting}
+            className="w-full text-sm font-semibold tracking-wide shadow-md hover:shadow-emerald-950/20"
+            disabled={isLoading}
+            isLoading={isLoading}
+            loadingText="Signing in..."
           >
             Authenticate & Proceed
           </Button>
 
+          {/* Minimal Test Login Credentials Block */}
+          <div className="w-full rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Demo System Admin Access
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setValue("email", "admin@khastravels.com", { shouldValidate: true });
+                  setValue("password", "admin123", { shouldValidate: true });
+                }}
+                disabled={isLoading}
+                className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+              >
+                Auto-fill
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[11px] font-mono rounded-lg bg-slate-900/90 border border-slate-800/80 p-2.5">
+              <div>
+                <span className="text-slate-500 font-sans block text-[10px]">Email</span>
+                <span className="select-all text-slate-200">admin@khastravels.com</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans block text-[10px]">Password</span>
+                <span className="select-all text-emerald-400">admin123</span>
+              </div>
+            </div>
+          </div>
+
           <p className="text-center text-[11px] text-slate-500">
-            Karwan-e-Asotvi Travels Internal Enterprise Access
+            Khas Travels Internal Enterprise Access
           </p>
         </CardFooter>
       </form>

@@ -6,6 +6,7 @@ import { officePaymentsApi } from "@/lib/api/finance";
 import { OfficePayment } from "@/types/finance";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { AlertTriangle, Trash2, X, Loader2 } from "lucide-react";
 
 interface DeletePaymentDialogProps {
@@ -22,6 +23,7 @@ export function DeletePaymentDialog({
   onSuccess,
 }: DeletePaymentDialogProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -30,14 +32,17 @@ export function DeletePaymentDialog({
       return officePaymentsApi.delete(payment.id);
     },
     onSuccess: () => {
+      toast.success("Payment Removed", "Payment record deleted and ledger updated.");
+      setError(null);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["office-payments"] });
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
-      setError(null);
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
-      setError(err.response?.data?.error?.message || err.message || "Failed to delete payment record.");
+      const msg = err.response?.data?.error?.message || err.message || "Failed to delete payment record.";
+      setError(msg);
+      toast.error("Delete Failed", msg);
     },
   });
 
@@ -96,21 +101,13 @@ export function DeletePaymentDialog({
             type="button"
             variant="destructive"
             size="sm"
-            disabled={mutation.isPending}
+            isLoading={mutation.isPending}
+            loadingText="Deleting..."
             onClick={() => mutation.mutate()}
             className="gap-1.5"
           >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-3.5 w-3.5" />
-                Confirm Delete
-              </>
-            )}
+            <Trash2 className="h-3.5 w-3.5" />
+            Confirm Delete
           </Button>
         </CardFooter>
       </Card>

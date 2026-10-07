@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   RotateCcw,
   AlertCircle,
@@ -39,6 +40,7 @@ export function RefundProcessingModal({
   onSuccess,
 }: RefundModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const [refundSeats, setRefundSeats] = useState<number>(1);
   const [originalAmount, setOriginalAmount] = useState<string>("");
@@ -64,11 +66,12 @@ export function RefundProcessingModal({
   const mutation = useMutation({
     mutationFn: refundsApi.create,
     onSuccess: () => {
+      toast.success("Ticket refund processed and posted successfully");
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["refunds"] });
       queryClient.invalidateQueries({ queryKey: ["ticketing-kpi"] });
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
       const data = err?.response?.data;
@@ -83,6 +86,12 @@ export function RefundProcessingModal({
     },
   });
 
+  const grossVal = Number(originalAmount) || 0;
+  const penaltyVal = Number(penaltyFee) || 0;
+  const netRefundVal = React.useMemo(() => {
+    return Math.max(0, grossVal - penaltyVal);
+  }, [grossVal, penaltyVal]);
+
   if (!isOpen || !ticket) return null;
 
   const perSeatCost = Number(ticket.per_seat_cost) || 0;
@@ -93,10 +102,6 @@ export function RefundProcessingModal({
     setRefundSeats(clamped);
     setOriginalAmount(String((perSeatCost * clamped).toFixed(2)));
   };
-
-  const grossVal = Number(originalAmount) || 0;
-  const penaltyVal = Number(penaltyFee) || 0;
-  const netRefundVal = Math.max(0, grossVal - penaltyVal);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,6 +285,7 @@ export function RefundProcessingModal({
               variant="destructive"
               size="sm"
               isLoading={mutation.isPending}
+              loadingText="Processing Refund..."
               disabled={maxSeats <= 0 || penaltyVal > grossVal}
             >
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />

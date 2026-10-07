@@ -6,6 +6,7 @@ import { officeExpensesApi } from "@/lib/api/finance";
 import { OfficeExpense } from "@/types/finance";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { Trash2, AlertTriangle, X, Loader2 } from "lucide-react";
 
 interface DeleteExpenseDialogProps {
@@ -22,6 +23,7 @@ export function DeleteExpenseDialog({
   onSuccess,
 }: DeleteExpenseDialogProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -30,14 +32,17 @@ export function DeleteExpenseDialog({
       return officeExpensesApi.delete(expense.id);
     },
     onSuccess: () => {
+      toast.success("Expense Deleted", "Expense item was removed successfully.");
+      setError(null);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["office-expenses"] });
       queryClient.invalidateQueries({ queryKey: ["expense-summary"] });
-      setError(null);
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
-      setError(err.response?.data?.error?.message || err.message || "Failed to delete expense.");
+      const msg = err.response?.data?.error?.message || err.message || "Failed to delete expense.";
+      setError(msg);
+      toast.error("Delete Failed", msg);
     },
   });
 
@@ -74,7 +79,7 @@ export function DeleteExpenseDialog({
 
           <p className="text-xs text-slate-600 dark:text-slate-300">
             Are you sure you want to delete the expense{" "}
-            <strong>"{expense.item_name}"</strong> (PKR {Number(expense.amount).toLocaleString()})?
+            <strong>&quot;{expense.item_name}&quot;</strong> (PKR {Number(expense.amount).toLocaleString()})?
           </p>
         </CardContent>
 
@@ -86,11 +91,12 @@ export function DeleteExpenseDialog({
             type="button"
             variant="destructive"
             size="sm"
-            disabled={mutation.isPending}
+            isLoading={mutation.isPending}
+            loadingText="Deleting..."
             onClick={() => mutation.mutate()}
             className="gap-1.5"
           >
-            {mutation.isPending ? "Deleting..." : "Confirm Delete"}
+            Confirm Delete
           </Button>
         </CardFooter>
       </Card>

@@ -1,6 +1,7 @@
 """Views for Travel Packages, Enrollments, Payments, and Financial Ledger Reports."""
 
 from decimal import Decimal
+from django.conf import settings
 from django.db import models
 from django.db.models import Sum, F, DecimalField, Value
 from django.db.models.functions import Coalesce
@@ -294,12 +295,21 @@ class PackageEnrollmentInvoiceView(APIView):
             for d in enr.traveler.dependents.all()
         ]
 
+        agency_cfg = getattr(settings, "AGENCY_CONFIG", {
+            "name": "Khas Travels",
+            "phone": "0334-3020868",
+            "address": "Office No 5, Hyderabad Road, Mirpurkhas, Sindh",
+            "footer_text": "Powered by Innosoft Technologies",
+        })
+
         payload = {
             "agency": {
-                "name": "Karwan-e-Asotvi Travels",
+                "name": agency_cfg.get("name", "Khas Travels"),
                 "tagline": "Hajj, Umrah & International Tour Management",
-                "contact": "+92 300 1234567 / info@karwan-travels.com",
-                "address": "Main Boulevard, Gulberg III, Lahore, Pakistan",
+                "contact": f"{agency_cfg.get('phone', '0334-3020868')} / info@khastravels.com",
+                "phone": agency_cfg.get("phone", "0334-3020868"),
+                "address": agency_cfg.get("address", "Office No 5, Hyderabad Road, Mirpurkhas, Sindh"),
+                "footer_text": agency_cfg.get("footer_text", "Powered by Innosoft Technologies"),
             },
             "invoice": {
                 "enrollment_number": enr.enrollment_number,

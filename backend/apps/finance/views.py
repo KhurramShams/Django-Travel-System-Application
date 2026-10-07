@@ -1,6 +1,7 @@
 """Views and ViewSets for Banking, Office Payments, and Operational Expense Management."""
 
 from decimal import Decimal
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
@@ -251,11 +252,19 @@ class OfficeExpenseViewSet(viewsets.ModelViewSet):
 
         total_amount = daily_expenses.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
 
+        agency_cfg = getattr(settings, "AGENCY_CONFIG", {
+            "name": "Khas Travels",
+            "phone": "0334-3020868",
+            "address": "Office No 5, Hyderabad Road, Mirpurkhas, Sindh",
+            "footer_text": "Powered by Innosoft Technologies",
+        })
+
         return Response(
             {
                 "date": target_date,
                 "total_amount": total_amount,
                 "total_items": daily_expenses.count(),
                 "expenses": OfficeExpenseSerializer(daily_expenses, many=True).data,
+                "agency": agency_cfg,
             }
         )

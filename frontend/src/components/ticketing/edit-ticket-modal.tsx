@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/components/providers/auth-provider";
+import { getErrorMessage } from "@/lib/utils";
 import {
   Edit3,
   AlertCircle,
@@ -62,6 +65,9 @@ export function EditTicketModal({
   onSuccess,
 }: EditTicketModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { role } = useAuth();
+  const isAdmin = role === "Admin";
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -101,8 +107,9 @@ export function EditTicketModal({
 
   const watchedSeats = watch("total_tickets") || 1;
   const watchedPrice = watch("total_price") || 0;
-  const calculatedPerSeat =
-    watchedSeats > 0 ? (watchedPrice / watchedSeats).toFixed(2) : "0.00";
+  const calculatedPerSeat = React.useMemo(() => {
+    return watchedSeats > 0 ? (watchedPrice / watchedSeats).toFixed(2) : "0.00";
+  }, [watchedSeats, watchedPrice]);
 
   const mutation = useMutation({
     mutationFn: (data: EditTicketFormValues) => {
@@ -118,22 +125,20 @@ export function EditTicketModal({
       });
     },
     onSuccess: () => {
+      toast.success("Airline ticket reservation updated successfully");
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticketing-kpi"] });
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
       console.error("Failed to update ticket:", err);
-      const res = err?.response?.data;
-      const msg =
-        res?.error ||
-        res?.detail ||
-        res?.total_tickets?.[0] ||
-        res?.total_price?.[0] ||
-        res?.pnr_number?.[0] ||
-        "Failed to update airline ticket. Please review the values and try again.";
+      const msg = getErrorMessage(
+        err,
+        "Failed to update airline ticket. Please review the values and try again."
+      );
       setServerError(msg);
+      toast.error("Update Failed", msg);
     },
   });
 
@@ -331,24 +336,34 @@ export function EditTicketModal({
                 {...register("notes")}
               />
             </div>
+
+            {!isAdmin && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+                <p className="font-semibold text-xs flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                  Administrator Privileges Required
+                </p>
+                <p className="text-[11px] mt-0.5">
+                  Only Administrator accounts are permitted to modify airline ticket inventory, pricing, and quotas.
+                </p>
+              </div>
+            )}
           </CardContent>
 
           <CardFooter className="flex justify-end gap-2 border-t border-slate-100 p-4 dark:border-slate-800 shrink-0">
             <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={mutation.isPending}>
               Cancel
             </Button>
-            <Button type="submit" variant="brand" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Saving Changes...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                  Save Changes
-                </>
-              )}
+            <Button
+              type="submit"
+              variant="brand"
+              size="sm"
+              disabled={!isAdmin || mutation.isPending}
+              isLoading={mutation.isPending}
+              loadingText="Saving Changes..."
+            >
+              <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+              Save Changes
             </Button>
           </CardFooter>
         </form>

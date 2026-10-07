@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { hotelsApi } from "@/lib/api/hotels";
 import { Button } from "@/components/ui/button";
+import { PDFHeader, PDFFooter } from "@/components/pdf";
 import {
   Printer,
   ArrowLeft,
@@ -86,41 +87,13 @@ export default function PrintHotelVoucherPage() {
 
       {/* Official Printable Voucher Document */}
       <div className="bg-white text-slate-900 p-8 sm:p-12 rounded-xl border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-0">
-        {/* Header / Letterhead */}
-        <div className="border-b-2 border-emerald-600 pb-6 mb-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-lg">
-                  K
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
-                    Karwan-e-Asotvi Travels
-                  </h1>
-                  <p className="text-[11px] font-semibold text-emerald-700 tracking-wider uppercase">
-                    Hajj, Umrah & Tourism Management System
-                  </p>
-                </div>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-2">
-                Office #14, Al-Madinah Centre, Karachi, Pakistan • Tel: +92 21 34567890
-              </p>
-            </div>
-
-            <div className="text-right">
-              <span className="inline-block bg-slate-900 text-white font-mono font-bold text-xs px-3 py-1 rounded">
-                HOTEL VOUCHER
-              </span>
-              <p className="text-xs font-mono font-bold text-slate-800 mt-2">
-                VOUCHER #{booking.booking_reference}
-              </p>
-              <p className="text-[10px] text-slate-500 font-mono">
-                Issued: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Unified Agency Header */}
+        <PDFHeader
+          docTitle="Hotel Voucher"
+          docNumber={`VOUCHER #${booking.booking_reference}`}
+          issueDate={new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+          tagline="Hajj, Umrah & Tourism Management System"
+        />
 
         {/* Property & Stay Summary Block */}
         <div className="grid grid-cols-2 gap-6 bg-slate-50 p-5 rounded-lg border border-slate-200 mb-6 text-xs">
@@ -223,26 +196,15 @@ export default function PrintHotelVoucherPage() {
           </div>
         )}
 
-        {/* Official Endorsements & Signatures Block */}
-        <div className="grid grid-cols-3 gap-8 pt-8 border-t border-slate-200 text-center text-xs">
-          <div>
-            <div className="border-b border-slate-300 pb-8" />
-            <p className="font-semibold text-slate-800 mt-2">Prepared By</p>
-            <p className="text-[10px] text-slate-400 font-mono">{booking.created_by_name || "Ticketing Officer"}</p>
-          </div>
-
-          <div>
-            <div className="border-b border-slate-300 pb-8" />
-            <p className="font-semibold text-slate-800 mt-2">Operations Manager</p>
-            <p className="text-[10px] text-slate-400">Karwan-e-Asotvi Travels</p>
-          </div>
-
-          <div className="border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center p-3">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              Official Seal & Stamp
-            </span>
-          </div>
-        </div>
+        {/* Unified Agency Footer & Signatures */}
+        <PDFFooter
+          signatures={[
+            { title: "Prepared By", subtitle: booking.created_by_name || "Ticketing Officer" },
+            { title: "Operations Manager", subtitle: "Khas Travels" },
+            { title: "Official Seal & Stamp", isStamp: true },
+          ]}
+          note="This is an authorized hotel accommodation voucher. Please present this document upon check-in at the hotel reception."
+        />
       </div>
     </div>
   );

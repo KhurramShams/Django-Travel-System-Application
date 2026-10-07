@@ -10,6 +10,7 @@ import { OfficePayment, PaymentMode } from "@/types/finance";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   Edit3,
   PlusCircle,
@@ -47,6 +48,7 @@ export function UpdatePaymentModal({
   onSuccess,
 }: UpdatePaymentModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<"DETAILS" | "ADD_AMOUNT">("DETAILS");
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -84,14 +86,17 @@ export function UpdatePaymentModal({
       return officePaymentsApi.update(payment.id, data);
     },
     onSuccess: () => {
+      toast.success("Payment Updated", "Payment details saved successfully.");
+      setServerError(null);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["office-payments"] });
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
-      setServerError(null);
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
-      setServerError(err.response?.data?.error?.message || err.message || "Failed to update payment.");
+      const msg = err.response?.data?.error?.message || err.message || "Failed to update payment.";
+      setServerError(msg);
+      toast.error("Update Failed", msg);
     },
   });
 
@@ -107,14 +112,20 @@ export function UpdatePaymentModal({
       });
     },
     onSuccess: () => {
+      toast.success(
+        "Amount Appended",
+        `PKR ${Number(addedAmount).toLocaleString()} added to transaction.`
+      );
+      setServerError(null);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["office-payments"] });
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
-      setServerError(null);
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
-      setServerError(err.response?.data?.error?.message || err.message || "Failed to add incremental amount.");
+      const msg = err.response?.data?.error?.message || err.message || "Failed to add incremental amount.";
+      setServerError(msg);
+      toast.error("Action Failed", msg);
     },
   });
 
@@ -256,15 +267,14 @@ export function UpdatePaymentModal({
                 <Button type="button" variant="outline" size="sm" onClick={onClose}>
                   Cancel
                 </Button>
-                <Button type="submit" variant="brand" size="sm" disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Details"
-                  )}
+                <Button
+                  type="submit"
+                  variant="brand"
+                  size="sm"
+                  isLoading={updateMutation.isPending}
+                  loadingText="Saving Details..."
+                >
+                  Save Details
                 </Button>
               </div>
             </form>
@@ -317,20 +327,13 @@ export function UpdatePaymentModal({
                   type="button"
                   variant="brand"
                   size="sm"
-                  disabled={addAmountMutation.isPending || !Number(addedAmount)}
+                  isLoading={addAmountMutation.isPending}
+                  loadingText="Appending..."
+                  disabled={!Number(addedAmount)}
                   onClick={() => addAmountMutation.mutate()}
                 >
-                  {addAmountMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                      Appending...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="h-3.5 w-3.5 mr-1" />
-                      Confirm Add Amount
-                    </>
-                  )}
+                  <PlusCircle className="h-3.5 w-3.5 mr-1" />
+                  Confirm Add Amount
                 </Button>
               </div>
             </div>

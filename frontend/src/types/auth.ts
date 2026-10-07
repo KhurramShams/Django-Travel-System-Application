@@ -6,7 +6,7 @@ export type UserRole = "Admin" | "Agent" | "Accountant";
 
 export interface UserProfile {
   id: string;
-  supabase_uid: string;
+  supabase_uid?: string;
   email: string;
   first_name: string;
   last_name: string;

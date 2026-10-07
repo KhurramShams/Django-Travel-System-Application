@@ -1,5 +1,4 @@
-import React from "react";
-import { Plane, Compass, ShieldCheck } from "lucide-react";
+import Image from "next/image";
 
 export default function AuthLayout({
   children,
@@ -18,16 +17,23 @@ export default function AuthLayout({
       />
 
       {/* Header Brand */}
-      <div className="relative z-10 mb-8 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-lg shadow-emerald-900/40">
-          <Plane className="h-6 w-6 -rotate-45" />
+      <div className="relative z-10 mb-8 flex flex-col items-center text-center gap-3">
+        <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl bg-white p-2.5 shadow-md border border-slate-200/80">
+          <Image
+            src="/logo.png"
+            alt="Khas Travels Logo"
+            width={80}
+            height={80}
+            priority
+            className="object-contain"
+          />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-            Karwan-e-Asotvi Travels
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            Khas Travels
           </h1>
-          <p className="text-xs text-emerald-400 font-medium">
-            Enterprise Hajj, Umrah & Travel Management
+          <p className="text-xs text-emerald-400 font-medium mt-0.5">
+            Enterprise Hajj, Umrah & Travel Management ERP System
           </p>
         </div>
       </div>
@@ -35,10 +41,9 @@ export default function AuthLayout({
       {/* Main Form Container */}
       <main className="relative z-10 w-full max-w-md">{children}</main>
 
-      {/* Security Assurance Footer */}
-      <footer className="relative z-10 mt-8 flex items-center gap-2 text-xs text-slate-400">
-        <ShieldCheck className="h-4 w-4 text-emerald-400" />
-        <span>Secured by Supabase Auth & Django RBAC Architecture</span>
+      {/* System Attribution Footer */}
+      <footer className="relative z-10 mt-8 flex items-center justify-center text-xs text-slate-400 text-center">
+        <span>ERP System Powered by Innosoft Technologies (+92 334 3020868)</span>
       </footer>
     </div>
   );

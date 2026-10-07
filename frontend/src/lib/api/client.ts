@@ -1,5 +1,4 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { createClient } from "@/lib/supabase/client";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_DJANGO_API_URL ||
@@ -14,46 +13,44 @@ export const apiClient = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor: Inject test auth token or Supabase JWT access token
+// Helper to retrieve auth token from localStorage or cookie
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem("auth_token") || localStorage.getItem("test_auth_token");
+  if (token) return token;
+
+  const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+// Request interceptor: Inject Bearer JWT token
 apiClient.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     try {
-      if (typeof window !== "undefined") {
-        // Priority 1: Direct test/admin auth token
-        const testToken = localStorage.getItem("test_auth_token");
-        if (testToken) {
-          config.headers.Authorization = `Bearer ${testToken}`;
-          return config;
-        }
-
-        // Priority 2: Supabase session token
-        const supabase = createClient();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.access_token) {
-          config.headers.Authorization = `Bearer ${session.access_token}`;
-        }
+      const token = getAuthToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (err) {
-      console.warn("Could not retrieve session for API request:", err);
+      console.warn("Could not retrieve auth token for API request:", err);
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: Standardize error formatting
+// Response interceptor: Standardize error formatting and handle 401 session expiry
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
-      // Avoid infinite loop if already on login
       if (!window.location.pathname.startsWith("/login")) {
         console.warn("API session expired or unauthorized. Redirecting to login...");
-        const supabase = createClient();
-        await supabase.auth.signOut();
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+        localStorage.removeItem("test_auth_token");
+        localStorage.removeItem("test_auth_user");
+        document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
         window.location.href = `/login?redirect=${encodeURIComponent(
           window.location.pathname
         )}`;

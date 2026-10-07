@@ -12,6 +12,7 @@ import { HotelLocation, HotelPaymentMethod } from "@/types/hotels";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   Building2,
   Calendar,
@@ -62,6 +63,7 @@ type BookHotelFormValues = z.infer<typeof bookHotelSchema>;
 
 export default function BookHotelPage() {
   const router = useRouter();
+  const toast = useToast();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -85,14 +87,17 @@ export default function BookHotelPage() {
 
   const totalPrice = watch("total_price") || 0;
   const advancePaid = watch("advance_paid") || 0;
-  const remainingAmount = Math.max(0, totalPrice - advancePaid);
+  const remainingAmount = React.useMemo(() => {
+    return Math.max(0, Number(totalPrice) - Number(advancePaid));
+  }, [totalPrice, advancePaid]);
 
-  const projectedStatus =
-    totalPrice > 0 && advancePaid >= totalPrice
+  const projectedStatus = React.useMemo(() => {
+    return Number(totalPrice) > 0 && Number(advancePaid) >= Number(totalPrice)
       ? "PAID"
-      : advancePaid > 0
+      : Number(advancePaid) > 0
       ? "PARTIAL"
       : "UNPAID";
+  }, [totalPrice, advancePaid]);
 
   const mutation = useMutation({
     mutationFn: (data: BookHotelFormValues) =>
@@ -110,6 +115,10 @@ export default function BookHotelPage() {
         notes: data.notes || undefined,
       }),
     onSuccess: (booking) => {
+      toast.success(
+        "Hotel Booking Saved",
+        `${booking.hotel_name} (${booking.location}) reserved successfully.`
+      );
       queryClient.invalidateQueries({ queryKey: ["hotels"] });
       queryClient.invalidateQueries({ queryKey: ["hotel-summary"] });
       router.push(`/hotels/${booking.id}`);
@@ -121,6 +130,7 @@ export default function BookHotelPage() {
         err.message ||
         "An unexpected error occurred while booking the hotel.";
       setServerError(msg);
+      toast.error("Hotel Booking Failed", msg);
     },
   });
 
@@ -424,19 +434,11 @@ export default function BookHotelPage() {
                   type="submit"
                   variant="brand"
                   className="w-full gap-2"
-                  disabled={mutation.isPending}
+                  isLoading={mutation.isPending}
+                  loadingText="Creating Reservation..."
                 >
-                  {mutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Creating Reservation...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Confirm & Save Booking
-                    </>
-                  )}
+                  <CheckCircle2 className="h-4 w-4" />
+                  Confirm & Save Booking
                 </Button>
 
                 <Link href="/hotels" className="w-full">

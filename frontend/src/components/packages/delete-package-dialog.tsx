@@ -13,6 +13,8 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { getErrorMessage } from "@/lib/utils";
 import {
   AlertTriangle,
   X,
@@ -36,6 +38,7 @@ export function DeletePackageDialog({
   onSuccess,
 }: DeletePackageDialogProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -44,19 +47,19 @@ export function DeletePackageDialog({
       return packagesApi.delete(pkg.id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages"] });
-      if (onSuccess) onSuccess();
+      toast.success("Package Deleted", `Tour package ${pkg?.package_code} was removed.`);
       onClose();
+      if (onSuccess) onSuccess();
+      queryClient.invalidateQueries({ queryKey: ["packages"] });
     },
     onError: (err: any) => {
       console.error("Failed to delete package:", err);
-      const res = err?.response?.data;
-      const msg =
-        res?.error?.message ||
-        res?.error ||
-        res?.detail ||
-        "Cannot delete tour package. It may contain enrolled travelers or financial records.";
+      const msg = getErrorMessage(
+        err,
+        "Cannot delete tour package. It may contain enrolled travelers or financial records."
+      );
       setErrorMessage(msg);
+      toast.error("Delete Failed", msg);
     },
   });
 
@@ -159,19 +162,11 @@ export function DeletePackageDialog({
             variant="destructive"
             size="sm"
             onClick={handleDelete}
-            disabled={mutation.isPending}
+            isLoading={mutation.isPending}
+            loadingText="Deleting..."
           >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                Delete Package
-              </>
-            )}
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Delete Package
           </Button>
         </CardFooter>
       </Card>

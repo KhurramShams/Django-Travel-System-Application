@@ -1,19 +1,20 @@
-"""Authentication and User management views."""
+"""Authentication and User management views using Native Django DB & JWT."""
 
-import datetime
-import jwt
-from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from .authentication import generate_jwt_for_user
 from .models import User, RoleChoices
 from .permissions import IsAdmin
 from .serializers import (
     UserSerializer,
+    UserCreateSerializer,
     UserProfileUpdateSerializer,
     UserAdminUpdateSerializer,
-    UserSyncSerializer,
+    ChangePasswordSerializer,
 )
 
 
@@ -40,13 +41,17 @@ class CurrentUserView(generics.RetrieveUpdateAPIView):
 
 
 class UserListView(generics.ListCreateAPIView):
-    """List all registered users or register new system users (Admin only)."""
+    """List all registered users or register new system users / admins (Admin only)."""
 
     permission_classes = [IsAdmin]
-    serializer_class = UserSerializer
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return UserCreateSerializer
+        return UserSerializer
 
     def get_queryset(self):
-        queryset = User.objects.all()
+        queryset = User.objects.all().order_by("-created_at")
         role = self.request.query_params.get("role")
         search = self.request.query_params.get("search")
 
@@ -59,6 +64,19 @@ class UserListView(generics.ListCreateAPIView):
                 | models.Q(last_name__icontains=search)
             )
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {
+                "success": True,
+                "message": f"User {user.email} successfully created.",
+                "user": UserSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -79,138 +97,94 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.save(update_fields=["is_active", "updated_at"])
 
 
-class SyncUserView(APIView):
-    """Explicitly synchronize user identity from Supabase Auth into Django."""
+class ChangePasswordView(APIView):
+    """Allow logged in user to update their account password."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        serializer = UserSyncSerializer(data=request.data)
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        user, created = User.objects.get_or_create(
-            supabase_uid=data["supabase_uid"],
-            defaults={
-                "email": data["email"],
-                "first_name": data.get("first_name", ""),
-                "last_name": data.get("last_name", ""),
-                "phone_number": data.get("phone_number", ""),
-                "role": data.get("role", RoleChoices.AGENT),
-            },
-        )
-
-        if not created:
-            user.email = data["email"]
-            if data.get("first_name"):
-                user.first_name = data["first_name"]
-            if data.get("last_name"):
-                user.last_name = data["last_name"]
-            if data.get("phone_number"):
-                user.phone_number = data["phone_number"]
-            user.save()
-
-        return Response(
-            {
-                "success": True,
-                "created": created,
-                "user": UserSerializer(user).data,
-            },
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
-        )
+        user = request.user
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password", "updated_at"])
+        return Response({"success": True, "message": "Password changed successfully."})
 
 
 class LoginView(APIView):
-    """Testing & Standard authentication endpoint supporting username 'admin' and password 'admin123'."""
+    """Native authentication endpoint: Validates against Django User table and returns JWT."""
 
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        username = request.data.get("username") or request.data.get("email", "")
-        password = request.data.get("password", "")
+        identifier = str(request.data.get("email") or request.data.get("username") or "").strip()
+        password = str(request.data.get("password") or "")
 
-        username = str(username).strip().lower()
-
-        # Support test credentials
-        is_admin_test = (username in ["admin", "admin@karwan-travels.com"] and password == "admin123")
-        is_agent_test = (username in ["agent", "agent@karwan-travels.com"] and password in ["agent123", "Agent@123456"])
-        is_accountant_test = (username in ["accountant", "accountant@karwan-travels.com"] and password in ["accountant123", "Accountant@123456"])
-
-        if not (is_admin_test or is_agent_test or is_accountant_test):
+        if not identifier or not password:
             return Response(
-                {"error": "Invalid username or password. For testing use username 'admin' and password 'admin123'"},
+                {"error": "Please provide both email/username and password."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Lookup user by email (case-insensitive) or common alias prefixes
+        user = User.objects.filter(email__iexact=identifier).first()
+        if not user:
+            # Check with domain aliases
+            for domain in ["@khastravels.com", "@karwan-travels.com"]:
+                user = User.objects.filter(email__iexact=f"{identifier}{domain}").first()
+                if user:
+                    break
+
+        # Check default credentials fallback for initial admin setup if password not yet migrated
+        if user and not user.has_usable_password():
+            if identifier.lower() in ["admin", "admin@khastravels.com", "admin@karwan-travels.com"] and password == "admin123":
+                user.set_password("admin123")
+                user.save(update_fields=["password"])
+            elif identifier.lower() in ["agent", "agent@khastravels.com", "agent@karwan-travels.com"] and password in ["agent123", "Agent@123456"]:
+                user.set_password("agent123")
+                user.save(update_fields=["password"])
+            elif identifier.lower() in ["accountant", "accountant@khastravels.com", "accountant@karwan-travels.com"] and password in ["accountant123", "Accountant@123456"]:
+                user.set_password("accountant123")
+                user.save(update_fields=["password"])
+
+        # Authenticate against hashed password stored in DB
+        if not user or not user.check_password(password):
+            return Response(
+                {"error": "Invalid email/username or password."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        if is_admin_test:
-            role = RoleChoices.ADMIN
-            email = "admin@karwan-travels.com"
-            first_name = "System"
-            last_name = "Admin"
-            uid = "00000000-0000-0000-0000-000000000001"
-        elif is_agent_test:
-            role = RoleChoices.AGENT
-            email = "agent@karwan-travels.com"
-            first_name = "Operations"
-            last_name = "Agent"
-            uid = "00000000-0000-0000-0000-000000000002"
-        else:
-            role = RoleChoices.ACCOUNTANT
-            email = "accountant@karwan-travels.com"
-            first_name = "Finance"
-            last_name = "Accountant"
-            uid = "00000000-0000-0000-0000-000000000003"
-
-        user, _ = User.objects.get_or_create(
-            email=email,
-            defaults={
-                "supabase_uid": uid,
-                "first_name": first_name,
-                "last_name": last_name,
-                "role": role,
-                "is_active": True,
-            },
-        )
         if not user.is_active:
-            user.is_active = True
-            user.save(update_fields=["is_active"])
-        if user.role != role:
-            user.role = role
-            user.save(update_fields=["role"])
+            return Response(
+                {"error": "This account is inactive. Please contact your system administrator."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-        jwt_secret = getattr(
-            settings,
-            "SUPABASE_JWT_SECRET",
-            "super-secret-jwt-token-with-at-least-32-characters-for-supabase-hs256",
-        )
-        algorithm = getattr(settings, "SUPABASE_JWT_ALGORITHM", "HS256")
-        now = datetime.datetime.now(datetime.timezone.utc)
-        exp = now + datetime.timedelta(days=30)
+        # Update last login timestamp
+        user.last_login = timezone.now()
+        user.save(update_fields=["last_login"])
 
-        payload = {
-            "sub": str(user.supabase_uid),
-            "email": user.email,
-            "role": "authenticated",
-            "aud": "authenticated",
-            "app_metadata": {"role": user.role},
-            "user_metadata": {
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "role": user.role,
-            },
-            "iat": int(now.timestamp()),
-            "exp": int(exp.timestamp()),
-        }
-
-        token = jwt.encode(payload, jwt_secret, algorithm=algorithm)
-        if isinstance(token, bytes):
-            token = token.decode("utf-8")
+        # Generate native JWT token
+        token = generate_jwt_for_user(user, expiration_days=30)
 
         return Response(
             {
+                "success": True,
                 "access_token": token,
                 "user": UserSerializer(user).data,
                 "role": user.role,
-            }
+            },
+            status=status.HTTP_200_OK,
         )
 
+
+class SyncUserView(APIView):
+    """Deprecated legacy endpoint - maintained for backwards compatibility."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        return Response(
+            {"success": True, "message": "User synchronization handled directly in database."},
+            status=status.HTTP_200_OK,
+        )

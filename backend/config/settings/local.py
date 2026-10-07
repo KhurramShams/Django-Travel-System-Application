@@ -1,4 +1,4 @@
-"""Local development settings for Karwan-e-Asotvi Travels backend."""
+"""Local development settings for Khas Travels backend."""
 
 from .base import *  # noqa: F401, F403
 

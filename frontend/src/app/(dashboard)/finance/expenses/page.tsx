@@ -11,6 +11,7 @@ import { ExpenseCategory, PaymentMode } from "@/types/finance";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   Receipt,
   PlusCircle,
@@ -54,6 +55,7 @@ type AddExpenseFormValues = z.infer<typeof addExpenseSchema>;
 
 export default function DailyExpensesPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const today = new Date().toISOString().split("T")[0];
   const [targetDate, setTargetDate] = useState<string>(today);
   const [isFormOpen, setIsFormOpen] = useState<boolean>(true);
@@ -96,9 +98,13 @@ export default function DailyExpensesPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: AddExpenseFormValues) => officeExpensesApi.create(data),
-    onSuccess: () => {
+    onSuccess: (exp) => {
       queryClient.invalidateQueries({ queryKey: ["daily-expenses"] });
       queryClient.invalidateQueries({ queryKey: ["expense-daily-summary"] });
+      toast.success(
+        "Expense Recorded",
+        `PKR ${Number(exp.amount).toLocaleString()} for ${exp.item_name} recorded.`
+      );
       setSuccessMessage("Operational expense recorded successfully!");
       setServerError(null);
       reset({
@@ -114,6 +120,7 @@ export default function DailyExpensesPage() {
     onError: (err: any) => {
       const msg = err.response?.data?.detail || err.message || "Failed to record expense";
       setServerError(msg);
+      toast.error("Expense Failed", msg);
       setSuccessMessage(null);
     },
   });
@@ -470,20 +477,12 @@ export default function DailyExpensesPage() {
                 type="submit"
                 variant="brand"
                 size="sm"
-                disabled={createMutation.isPending}
+                isLoading={createMutation.isPending}
+                loadingText="Recording Expense..."
                 className="gap-1.5 text-xs font-medium"
               >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Recording...
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    Save Expense Voucher
-                  </>
-                )}
+                <PlusCircle className="h-3.5 w-3.5" />
+                Save Expense Voucher
               </Button>
             </CardFooter>
           </form>
@@ -501,7 +500,12 @@ export default function DailyExpensesPage() {
             {expenses.length} record{expenses.length === 1 ? "" : "s"}
           </span>
         </div>
-        <ExpenseTable expenses={expenses} isLoading={isListLoading} onRefresh={handleRefresh} />
+        <ExpenseTable
+          expenses={expenses}
+          isLoading={isListLoading}
+          isFetching={isFetching}
+          onRefresh={handleRefresh}
+        />
       </div>
     </div>
   );

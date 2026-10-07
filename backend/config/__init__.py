@@ -1,1 +1,1 @@
-"""Karwan-e-Asotvi Travels backend package."""
+"""Khas Travels backend package."""

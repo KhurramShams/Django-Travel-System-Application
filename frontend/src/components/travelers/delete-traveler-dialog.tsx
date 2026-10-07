@@ -13,6 +13,8 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { getErrorMessage } from "@/lib/utils";
 import {
   AlertTriangle,
   X,
@@ -36,6 +38,7 @@ export function DeleteTravelerDialog({
   onSuccess,
 }: DeleteTravelerDialogProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -44,19 +47,19 @@ export function DeleteTravelerDialog({
       return travelersApi.delete(traveler.id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["travelers"] });
-      if (onSuccess) onSuccess();
+      toast.success("Traveler Deleted", `${traveler?.full_name} was removed from records.`);
       onClose();
+      if (onSuccess) onSuccess();
+      queryClient.invalidateQueries({ queryKey: ["travelers"] });
     },
     onError: (err: any) => {
       console.error("Failed to delete traveler:", err);
-      const res = err?.response?.data;
-      const msg =
-        res?.error?.message ||
-        res?.error ||
-        res?.detail ||
-        "Cannot delete traveler. The traveler may have active package enrollments.";
+      const msg = getErrorMessage(
+        err,
+        "Cannot delete traveler. The traveler may have active package enrollments."
+      );
       setErrorMessage(msg);
+      toast.error("Delete Failed", msg);
     },
   });
 
@@ -163,19 +166,11 @@ export function DeleteTravelerDialog({
             variant="destructive"
             size="sm"
             onClick={handleDelete}
-            disabled={mutation.isPending}
+            isLoading={mutation.isPending}
+            loadingText="Deleting..."
           >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                Delete Traveler
-              </>
-            )}
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Delete Traveler
           </Button>
         </CardFooter>
       </Card>

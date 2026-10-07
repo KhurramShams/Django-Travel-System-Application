@@ -11,7 +11,7 @@ export default function NotFound() {
         </div>
         <h1 className="text-3xl font-extrabold tracking-tight">404 — Page Not Found</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          The requested page could not be located on the Karwan-e-Asotvi Travels portal.
+          The requested page could not be located on the Khas Travels portal.
         </p>
         <div className="pt-2">
           <Link href="/">

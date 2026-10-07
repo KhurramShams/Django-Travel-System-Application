@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   Edit3,
   AlertCircle,
@@ -62,6 +63,7 @@ export function EditTravelerModal({
   onSuccess,
 }: EditTravelerModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -105,11 +107,12 @@ export function EditTravelerModal({
       return travelersApi.update(traveler.id, payload);
     },
     onSuccess: (data) => {
+      toast.success("Traveler profile updated successfully");
+      onClose();
+      if (onSuccess) onSuccess(data);
       queryClient.invalidateQueries({ queryKey: ["travelers"] });
       queryClient.invalidateQueries({ queryKey: ["traveler", traveler?.id] });
       queryClient.invalidateQueries({ queryKey: ["traveler-history", traveler?.id] });
-      if (onSuccess) onSuccess(data);
-      onClose();
     },
     onError: (err: any) => {
       console.error("Traveler update error:", err);
@@ -294,19 +297,11 @@ export function EditTravelerModal({
               type="submit"
               variant="brand"
               size="sm"
-              disabled={mutation.isPending}
+              isLoading={mutation.isPending}
+              loadingText="Saving Changes..."
             >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                  Save Changes
-                </>
-              )}
+              <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+              Save Changes
             </Button>
           </CardFooter>
         </form>

@@ -46,7 +46,7 @@ class BankAccount(BaseModel):
     account_name = models.CharField(
         _("account title"),
         max_length=200,
-        help_text="Official title registered on the account (e.g. Karwan-e-Asotvi Travels)",
+        help_text="Official title registered on the account (e.g. Khas Travels)",
     )
     account_number = models.CharField(
         _("account number / IBAN"),

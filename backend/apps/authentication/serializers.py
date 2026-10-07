@@ -1,5 +1,6 @@
 """Serializers for User authentication and profiles."""
 
+import uuid
 from rest_framework import serializers
 from .models import User, RoleChoices
 
@@ -13,7 +14,6 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "supabase_uid",
             "email",
             "first_name",
             "last_name",
@@ -27,12 +27,42 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
-            "supabase_uid",
-            "email",
             "is_staff",
             "created_at",
             "updated_at",
         ]
+
+
+class UserCreateSerializer(serializers.ModelSerializer):
+    """Serializer for administrators to create new staff users with password."""
+
+    password = serializers.CharField(write_only=True, required=True, min_length=6)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "email",
+            "password",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "role",
+            "is_active",
+        ]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        role = validated_data.get("role", RoleChoices.AGENT)
+        is_staff = (role == RoleChoices.ADMIN)
+
+        user = User.objects.create_user(
+            password=password,
+            is_staff=is_staff,
+            **validated_data
+        )
+        return user
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -48,7 +78,9 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
 
 
 class UserAdminUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for administrators to manage user roles and status."""
+    """Serializer for administrators to manage user roles, status, and reset passwords."""
+
+    password = serializers.CharField(write_only=True, required=False, min_length=6, allow_blank=True)
 
     class Meta:
         model = User
@@ -58,6 +90,7 @@ class UserAdminUpdateSerializer(serializers.ModelSerializer):
             "phone_number",
             "role",
             "is_active",
+            "password",
         ]
 
     def validate_role(self, value):
@@ -67,13 +100,26 @@ class UserAdminUpdateSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        if password:
+            instance.set_password(password)
 
-class UserSyncSerializer(serializers.Serializer):
-    """Payload serializer for frontend user sync endpoint."""
+        role = validated_data.get("role", instance.role)
+        if role == RoleChoices.ADMIN:
+            instance.is_staff = True
 
-    supabase_uid = serializers.CharField(required=True, max_length=128)
-    email = serializers.EmailField(required=True)
-    first_name = serializers.CharField(required=False, allow_blank=True, default="")
-    last_name = serializers.CharField(required=False, allow_blank=True, default="")
-    phone_number = serializers.CharField(required=False, allow_blank=True, default="")
-    role = serializers.ChoiceField(choices=RoleChoices.choices, default=RoleChoices.AGENT)
+        return super().update(instance, validated_data)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serializer for password changes."""
+
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=6)
+
+    def validate_old_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password does not match.")
+        return value
