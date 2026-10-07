@@ -41,6 +41,7 @@ LOCAL_APPS = [
     "apps.packages.apps.PackagesConfig",
     "apps.ticketing.apps.TicketingConfig",
     "apps.hotels.apps.HotelsConfig",
+    "apps.finance.apps.FinanceConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -138,11 +139,12 @@ REST_FRAMEWORK = {
     "DATE_FORMAT": "%Y-%m-%d",
 }
 
-# Supabase Auth & JWT Configuration
+# JWT Configuration (Supports standard JWT or legacy Supabase JWT)
+JWT_SECRET = os.environ.get("JWT_SECRET", "karwan-travels-secret-jwt-key-2026")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
+SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", JWT_SECRET)
 SUPABASE_JWT_ALGORITHM = os.environ.get("SUPABASE_JWT_ALGORITHM", "HS256")
 SUPABASE_JWT_AUDIENCE = os.environ.get("SUPABASE_JWT_AUDIENCE", "authenticated")
 
