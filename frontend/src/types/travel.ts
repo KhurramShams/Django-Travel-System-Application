@@ -89,6 +89,7 @@ export interface PackageEnrollment {
   traveler_name: string;
   traveler_cnic: string;
   traveler_phone: string;
+  traveler_passport?: string;
   traveler_age_category: AgeCategory;
   package_id: string;
   package_title: string;

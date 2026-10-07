@@ -1,9 +1,11 @@
 "use client";
 
-import React, { use } from "react";
+import React, { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { packagesApi } from "@/lib/api/travel";
+import { PackageEnrollment } from "@/types/travel";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +25,13 @@ import {
   Loader2,
   Edit,
   DollarSign,
+  Printer,
+  Edit3,
+  Trash2,
+  UserMinus,
 } from "lucide-react";
+import { DeletePackageDialog } from "@/components/packages/delete-package-dialog";
+import { RemoveTravelerDialog } from "@/components/enrollments/remove-traveler-dialog";
 
 export default function PackageDetailPage({
   params,
@@ -31,6 +39,11 @@ export default function PackageDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedEnrollmentForRemoval, setSelectedEnrollmentForRemoval] = useState<PackageEnrollment | null>(null);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
 
   const { data: pkg, isLoading: pkgLoading } = useQuery({
     queryKey: ["package", id],
@@ -90,10 +103,33 @@ export default function PackageDetailPage({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/packages/${pkg.id}/print`}>
+            <Button variant="outline" className="font-semibold shadow-xs text-xs">
+              <Printer className="mr-1.5 h-3.5 w-3.5 text-slate-600" />
+              Print Package (PDF)
+            </Button>
+          </Link>
+
+          <Link href={`/packages/${pkg.id}/edit`}>
+            <Button variant="outline" className="font-semibold shadow-xs text-xs">
+              <Edit3 className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
+              Edit Package
+            </Button>
+          </Link>
+
+          <Button
+            variant="outline"
+            className="font-semibold shadow-xs text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-950/40"
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5 text-rose-500" />
+            Delete Package
+          </Button>
+
           <Link href={`/enrollments/new?package_id=${pkg.id}`}>
-            <Button variant="brand" className="font-semibold shadow-xs">
-              <UserPlus className="mr-2 h-4 w-4" />
+            <Button variant="brand" className="font-semibold shadow-xs text-xs">
+              <UserPlus className="mr-1.5 h-3.5 w-3.5" />
               Enroll Pilgrim
             </Button>
           </Link>
@@ -356,6 +392,19 @@ export default function PackageDetailPage({
                             Invoice
                           </Button>
                         </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs px-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                          onClick={() => {
+                            setSelectedEnrollmentForRemoval(enr);
+                            setIsRemoveDialogOpen(true);
+                          }}
+                          title="Remove traveler from package"
+                        >
+                          <UserMinus className="h-3 w-3 mr-1 text-rose-500" />
+                          Remove
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -365,6 +414,29 @@ export default function PackageDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Package Confirmation Dialog */}
+      <DeletePackageDialog
+        pkg={pkg}
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onSuccess={() => router.push("/packages")}
+      />
+
+      {/* Remove Traveler from Package Dialog */}
+      <RemoveTravelerDialog
+        enrollmentId={selectedEnrollmentForRemoval?.id || null}
+        travelerName={selectedEnrollmentForRemoval?.traveler_name || "Enrolled Pilgrim"}
+        packageTitle={pkg.title}
+        totalPaid={selectedEnrollmentForRemoval?.total_paid || 0}
+        packageId={pkg.id}
+        travelerId={selectedEnrollmentForRemoval?.traveler_id}
+        isOpen={isRemoveDialogOpen}
+        onClose={() => {
+          setIsRemoveDialogOpen(false);
+          setSelectedEnrollmentForRemoval(null);
+        }}
+      />
     </div>
   );
 }

@@ -22,12 +22,17 @@ import {
   Loader2,
   AlertCircle,
   Clock,
+  Edit3,
+  Trash2,
 } from "lucide-react";
+import { DeletePackageDialog } from "@/components/packages/delete-package-dialog";
 
 export default function PackagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [locationFilter, setLocationFilter] = useState("ALL");
+  const [selectedPackageForDelete, setSelectedPackageForDelete] = useState<TravelPackage | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { data: rawPackages, isLoading, error } = useQuery({
     queryKey: ["packages", searchTerm, statusFilter, locationFilter],
@@ -234,24 +239,55 @@ export default function PackagesPage() {
               </div>
 
               {/* Card Footer */}
-              <div className="border-t border-slate-100 p-3 bg-white dark:bg-slate-950 dark:border-slate-800 flex items-center justify-between">
+              <div className="border-t border-slate-100 p-3 bg-white dark:bg-slate-950 dark:border-slate-800 flex items-center justify-between gap-2">
                 <Link href={`/enrollments/new?package_id=${pkg.id}`}>
                   <Button size="sm" variant="brand" className="h-8 text-xs">
                     Enroll Pilgrim
                   </Button>
                 </Link>
 
-                <Link href={`/packages/${pkg.id}`}>
-                  <Button size="sm" variant="ghost" className="h-8 text-xs">
-                    View Details
-                    <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                <div className="flex items-center gap-1">
+                  <Link href={`/packages/${pkg.id}/edit`}>
+                    <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="Edit Package">
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    title="Delete Package"
+                    onClick={() => {
+                      setSelectedPackageForDelete(pkg);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
-                </Link>
+
+                  <Link href={`/packages/${pkg.id}`}>
+                    <Button size="sm" variant="ghost" className="h-8 text-xs">
+                      Details
+                      <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Delete Package Dialog */}
+      <DeletePackageDialog
+        pkg={selectedPackageForDelete}
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setSelectedPackageForDelete(null);
+        }}
+      />
     </div>
   );
 }

@@ -18,6 +18,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Plane,
+  Ticket,
+  RotateCcw,
+  Hotel,
+  BedDouble,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -102,11 +106,52 @@ export function Sidebar({ className }: SidebarProps) {
             icon={CalendarCheck}
             collapsed={collapsed}
           />
+        </div>
+
+        {/* Flight Ticketing (Module 3) */}
+        <div className="space-y-1">
+          {!collapsed && (
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Flight Ticketing
+            </p>
+          )}
           <NavItem
-            href="/visa"
-            label="Visa Processing"
-            icon={FileCheck2}
-            badge="4"
+            href="/tickets"
+            label="Purchased Tickets"
+            icon={Ticket}
+            collapsed={collapsed}
+          />
+          <NavItem
+            href="/tickets/book"
+            label="Book AirLine Ticket"
+            icon={Plane}
+            collapsed={collapsed}
+          />
+          <NavItem
+            href="/tickets/refunds"
+            label="Refund Ticket"
+            icon={RotateCcw}
+            collapsed={collapsed}
+          />
+        </div>
+
+        {/* Hotel Bookings (Module 4) */}
+        <div className="space-y-1">
+          {!collapsed && (
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Hotels & Lodging
+            </p>
+          )}
+          <NavItem
+            href="/hotels"
+            label="Hotel Bookings"
+            icon={Hotel}
+            collapsed={collapsed}
+          />
+          <NavItem
+            href="/hotels/book"
+            label="Book Hotel"
+            icon={BedDouble}
             collapsed={collapsed}
           />
         </div>

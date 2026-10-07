@@ -66,6 +66,9 @@ export const packagesApi = {
   archive: (id: string) =>
     api.delete<void>(`/packages/${id}/`),
 
+  delete: (id: string, force?: boolean): Promise<void> =>
+    api.delete<void>(`/packages/${id}/${force ? "?force=true" : ""}`),
+
   roster: (id: string) =>
     api.get<{
       package_id: string;
@@ -95,6 +98,9 @@ export const enrollmentsApi = {
     special_requests?: string;
   }) =>
     api.post<PackageEnrollmentDetail>("/enrollments/", data),
+
+  delete: (id: string, force?: boolean): Promise<void> =>
+    api.delete<void>(`/enrollments/${id}/${force ? "?force=true" : ""}`),
 
   cancel: (id: string) =>
     api.post<{ success: boolean; message: string }>(`/enrollments/${id}/cancel/`),
