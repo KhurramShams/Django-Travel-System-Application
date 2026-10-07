@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { OfficePayment } from "@/types/finance";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CreditCard,
   Edit3,
@@ -14,6 +15,7 @@ import {
   User,
   ArrowUpRight,
   ArrowDownLeft,
+  Loader2,
 } from "lucide-react";
 import { UpdatePaymentModal } from "./update-payment-modal";
 import { DeletePaymentDialog } from "./delete-payment-dialog";
@@ -21,18 +23,45 @@ import { DeletePaymentDialog } from "./delete-payment-dialog";
 interface PaymentTableProps {
   payments: OfficePayment[];
   isLoading: boolean;
+  isFetching?: boolean;
   onRefresh?: () => void;
 }
 
-export function PaymentTable({ payments, isLoading, onRefresh }: PaymentTableProps) {
+export function PaymentTable({ payments, isLoading, isFetching = false, onRefresh }: PaymentTableProps) {
   const [selectedForUpdate, setSelectedForUpdate] = useState<OfficePayment | null>(null);
   const [selectedForDelete, setSelectedForDelete] = useState<OfficePayment | null>(null);
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-slate-400 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-        <p className="mt-3 text-xs">Loading office transactions...</p>
+      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+            <tr>
+              <th className="py-3 px-4">Ref #</th>
+              <th className="py-3 px-4">Person / Beneficiary</th>
+              <th className="py-3 px-4">Operating Bank</th>
+              <th className="py-3 px-4 text-center">Type</th>
+              <th className="py-3 px-4">Mode</th>
+              <th className="py-3 px-4">Date</th>
+              <th className="py-3 px-4 text-right">Amount (PKR)</th>
+              <th className="py-3 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {[...Array(5)].map((_, i) => (
+              <tr key={i} className="animate-pulse">
+                <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
+                <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
+                <td className="py-3 px-4 text-center"><Skeleton className="h-5 w-16 mx-auto rounded-full" /></td>
+                <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                <td className="py-3 px-4 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
+                <td className="py-3 px-4 text-right"><Skeleton className="h-7 w-20 rounded-md ml-auto" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
@@ -59,7 +88,18 @@ export function PaymentTable({ payments, isLoading, onRefresh }: PaymentTablePro
 
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+      <div className="relative overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        {isFetching && !isLoading && (
+          <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-[0.5px] flex items-center justify-center pointer-events-none transition-opacity">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 text-white text-xs shadow-md">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
+              <span>Updating...</span>
+            </div>
+          </div>
+        )}
+        {isFetching && !isLoading && (
+          <div className="h-0.5 w-full bg-emerald-500 animate-pulse" />
+        )}
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
             <tr>

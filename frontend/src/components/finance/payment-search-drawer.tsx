@@ -77,7 +77,7 @@ export function PaymentSearchDrawer({
             </div>
           ) : results.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400">
-              No transactions matching "{searchTerm}".
+              No transactions matching &quot;{searchTerm}&quot;.
             </div>
           ) : (
             results.map((payment) => (

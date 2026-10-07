@@ -10,6 +10,7 @@ import { HotelBooking, HotelLocation } from "@/types/hotels";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   Edit3,
   X,
@@ -50,6 +51,7 @@ export function EditHotelModal({
   onSuccess,
 }: EditHotelModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -92,14 +94,15 @@ export function EditHotelModal({
       });
     },
     onSuccess: () => {
+      toast.success("Hotel reservation updated successfully");
+      setServerError(null);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["hotels"] });
       if (booking?.id) {
         queryClient.invalidateQueries({ queryKey: ["hotel", booking.id] });
       }
       queryClient.invalidateQueries({ queryKey: ["hotel-summary"] });
-      setServerError(null);
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
       const msg =
@@ -285,20 +288,12 @@ export function EditHotelModal({
               type="submit"
               variant="brand"
               size="sm"
-              disabled={mutation.isPending}
+              isLoading={mutation.isPending}
+              loadingText="Saving Changes..."
               className="gap-1.5"
             >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Saving Changes...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Update Reservation
-                </>
-              )}
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Update Reservation
             </Button>
           </CardFooter>
         </form>

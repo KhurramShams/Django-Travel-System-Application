@@ -1,4 +1,4 @@
-"""WSGI config for Karwan-e-Asotvi Travels backend."""
+"""WSGI config for Khas Travels backend."""
 
 import os
 from django.core.wsgi import get_wsgi_application

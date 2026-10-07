@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { refundsApi } from "@/lib/api/ticketing";
 import { Button } from "@/components/ui/button";
+import { PDFHeader, PDFFooter } from "@/components/pdf";
 import {
   Printer,
   ArrowLeft,
@@ -80,33 +81,18 @@ export default function TicketRefundVoucherPage({ params }: PageProps) {
 
       {/* Printable Voucher Paper */}
       <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900 print:border-none print:shadow-none print:p-0">
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-slate-200 pb-6 dark:border-slate-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-rose-600 to-amber-600 text-white font-bold">
-                <RotateCcw className="h-5 w-5" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                  Karwan-e-Asotvi Travels
-                </h1>
-                <p className="text-xs text-slate-500">Official Flight Ticket Refund & Credit Voucher</p>
-              </div>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-2">
-              Licensed Hajj, Umrah & Airline Passenger Operations • Pakistan
+        {/* Unified Agency Header */}
+        <PDFHeader
+          docTitle="Ticket Refund Slip"
+          docNumber={voucherNumber}
+          issueDate={refund.refund_date}
+          tagline="Official Flight Ticket Refund & Credit Voucher"
+          rightContent={
+            <p className="text-[11px] text-slate-500">
+              Auditor: <span className="font-medium text-slate-700 dark:text-slate-300">{refund.processed_by_name || "System Admin"}</span>
             </p>
-          </div>
-
-          <div className="text-right">
-            <span className="inline-block rounded-md bg-rose-50 px-2.5 py-1 text-xs font-bold font-mono text-rose-700 dark:bg-rose-950 dark:text-rose-400">
-              {voucherNumber}
-            </span>
-            <p className="text-xs text-slate-500 mt-2">Date: <strong className="text-slate-800 dark:text-slate-200">{refund.refund_date}</strong></p>
-            <p className="text-[11px] text-slate-400">Auditor: {refund.processed_by_name || "System Admin"}</p>
-          </div>
-        </div>
+          }
+        />
 
         {/* Flight & Ticket Booking Particulars */}
         <div className="mt-6 rounded-lg border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
@@ -187,23 +173,14 @@ export default function TicketRefundVoucherPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Signatures */}
-        <div className="mt-12 pt-8 border-t border-dashed border-slate-200 grid grid-cols-2 gap-12 text-center text-xs dark:border-slate-800">
-          <div>
-            <div className="border-b border-slate-300 dark:border-slate-700 h-12 w-3/4 mx-auto mb-2" />
-            <p className="font-semibold text-slate-800 dark:text-slate-200">Authorized Officer / Accountant</p>
-            <p className="text-[10px] text-slate-400">Karwan-e-Asotvi Travels</p>
-          </div>
-          <div>
-            <div className="border-b border-slate-300 dark:border-slate-700 h-12 w-3/4 mx-auto mb-2" />
-            <p className="font-semibold text-slate-800 dark:text-slate-200">Client / Agency Recipient</p>
-            <p className="text-[10px] text-slate-400">Acknowledgement of Refund</p>
-          </div>
-        </div>
-
-        <p className="text-center text-[10px] text-slate-400 mt-8">
-          This is an electronically generated and authorized refund note from Karwan-e-Asotvi Travels Management System.
-        </p>
+        {/* Unified Agency Footer & Signatures */}
+        <PDFFooter
+          signatures={[
+            { title: "Authorized Officer / Accountant", subtitle: "Khas Travels" },
+            { title: "Client / Agency Recipient", subtitle: "Acknowledgement of Refund" },
+          ]}
+          note="This is an electronically generated and authorized refund note from Khas Travels Management System."
+        />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 """User model and Role-Based Access Control definitions."""
 
+import uuid
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -15,7 +16,7 @@ class RoleChoices(models.TextChoices):
 
 
 class UserManager(BaseUserManager):
-    """Custom manager for Karwan-e-Asotvi User model."""
+    """Custom manager for Khas Travels User model."""
 
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -86,6 +87,11 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
+
+    def save(self, *args, **kwargs):
+        if not self.supabase_uid:
+            self.supabase_uid = str(uuid.uuid4())
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("user")

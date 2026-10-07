@@ -306,7 +306,7 @@ export default function TravelerDetailPage({
 
           <CardContent className="pt-0">
             <p className="text-[11px] text-slate-400">
-              Per Karwan-e-Asotvi policy, each passenger can only hold 1 active tour contract at a time.
+              Per Khas Travels policy, each passenger can only hold 1 active tour contract at a time.
             </p>
           </CardContent>
         </Card>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/components/providers/auth-provider";
 import { NavItem } from "./nav-item";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,6 @@ import {
   Receipt,
   Building2,
   ShieldCheck,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Plane,
@@ -26,6 +26,7 @@ import {
   CreditCard,
   PlusCircle,
   Wallet,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,16 +49,23 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Brand Header */}
       <div className="flex h-16 items-center border-b border-slate-200 px-4 dark:border-slate-800">
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white shadow-sm">
-            <Plane className="h-5 w-5 -rotate-45" />
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 p-1 dark:bg-slate-800 shadow-xs border border-slate-200/60 dark:border-slate-700/60">
+            <Image
+              src="/logo.png"
+              alt="Khas Travels Logo"
+              width={34}
+              height={34}
+              priority
+              className="object-contain"
+            />
           </div>
           {!collapsed && (
             <div className="flex flex-col truncate">
               <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
-                Karwan-e-Asotvi
+                Khas Travels
               </span>
               <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                Travels Management
+                Management System
               </span>
             </div>
           )}
@@ -215,6 +223,14 @@ export function Sidebar({ className }: SidebarProps) {
             currentRole={role}
             collapsed={collapsed}
           />
+          <NavItem
+            href="/transactions"
+            label="Master Ledger"
+            icon={BookOpen}
+            roles={["Admin", "Accountant"]}
+            currentRole={role}
+            collapsed={collapsed}
+          />
         </div>
 
         {/* System Administration (Admin only) */}
@@ -228,14 +244,6 @@ export function Sidebar({ className }: SidebarProps) {
             href="/admin/users"
             label="User Management"
             icon={ShieldCheck}
-            roles={["Admin"]}
-            currentRole={role}
-            collapsed={collapsed}
-          />
-          <NavItem
-            href="/admin/settings"
-            label="System Settings"
-            icon={Settings}
             roles={["Admin"]}
             currentRole={role}
             collapsed={collapsed}
@@ -260,8 +268,8 @@ export function Sidebar({ className }: SidebarProps) {
                 role === "Admin"
                   ? "brand"
                   : role === "Accountant"
-                  ? "warning"
-                  : "success"
+                    ? "warning"
+                    : "success"
               }
               className="text-[10px] uppercase font-bold"
             >

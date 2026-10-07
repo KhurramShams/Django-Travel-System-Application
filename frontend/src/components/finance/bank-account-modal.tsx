@@ -10,6 +10,7 @@ import { BankAccount } from "@/types/finance";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { Landmark, X, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 
 const bankAccountSchema = z.object({
@@ -35,6 +36,7 @@ export function BankAccountModal({
   onSuccess,
 }: BankAccountModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -57,7 +59,7 @@ export function BankAccountModal({
     } else {
       reset({
         bank_name: "",
-        account_name: "Karwan-e-Asotvi Travels",
+        account_name: "Khas Travels",
         account_number: "",
         branch_code: "",
       });
@@ -72,11 +74,15 @@ export function BankAccountModal({
       }
       return bankAccountsApi.create(data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
+    onSuccess: (acc) => {
+      toast.success(
+        "Bank Account Saved",
+        `${acc.bank_name} (${acc.account_number}) configuration updated.`
+      );
       setServerError(null);
-      if (onSuccess) onSuccess();
       onClose();
+      if (onSuccess) onSuccess();
+      queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
     },
     onError: (err: any) => {
       const msg =
@@ -85,6 +91,7 @@ export function BankAccountModal({
         err.message ||
         "Failed to save bank account.";
       setServerError(msg);
+      toast.error("Failed to Save Account", msg);
     },
   });
 
@@ -145,7 +152,7 @@ export function BankAccountModal({
                 Account Title <span className="text-rose-500">*</span>
               </label>
               <Input
-                placeholder="e.g. Karwan-e-Asotvi Travels"
+                placeholder="e.g. Khas Travels"
                 className="text-xs"
                 {...register("account_name")}
               />
@@ -188,20 +195,12 @@ export function BankAccountModal({
               type="submit"
               variant="brand"
               size="sm"
-              disabled={mutation.isPending}
+              isLoading={mutation.isPending}
+              loadingText="Saving Account..."
               className="gap-1.5"
             >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Save Account
-                </>
-              )}
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Save Account
             </Button>
           </CardFooter>
         </form>

@@ -1,4 +1,4 @@
-"""Base settings for Karwan-e-Asotvi Travels Management System."""
+"""Base settings for Khas Travels Management System."""
 
 from pathlib import Path
 import os
@@ -12,7 +12,7 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get(
     "SECRET_KEY",
-    "django-insecure-default-dev-key-change-in-production-karwan-travels",
+    "django-insecure-default-dev-key-change-in-production-khas-travels",
 )
 
 DEBUG = False
@@ -42,6 +42,7 @@ LOCAL_APPS = [
     "apps.ticketing.apps.TicketingConfig",
     "apps.hotels.apps.HotelsConfig",
     "apps.finance.apps.FinanceConfig",
+    "apps.dashboard.apps.DashboardConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -126,7 +127,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "apps.authentication.authentication.SupabaseAuthentication",
+        "apps.authentication.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
@@ -139,14 +140,9 @@ REST_FRAMEWORK = {
     "DATE_FORMAT": "%Y-%m-%d",
 }
 
-# JWT Configuration (Supports standard JWT or legacy Supabase JWT)
-JWT_SECRET = os.environ.get("JWT_SECRET", "karwan-travels-secret-jwt-key-2026")
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", JWT_SECRET)
-SUPABASE_JWT_ALGORITHM = os.environ.get("SUPABASE_JWT_ALGORITHM", "HS256")
-SUPABASE_JWT_AUDIENCE = os.environ.get("SUPABASE_JWT_AUDIENCE", "authenticated")
+# Native JWT Authentication Configuration
+JWT_SECRET = os.environ.get("JWT_SECRET", SECRET_KEY)
+JWT_ALGORITHM = "HS256"
 
 # CORS Configuration
 raw_cors = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
@@ -163,3 +159,19 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
 ]
+
+# Agency Branding & PDF Metadata
+AGENCY_NAME = os.environ.get("AGENCY_NAME", "Khas Travels")
+AGENCY_PHONE = os.environ.get("AGENCY_PHONE", "0334-3020868")
+AGENCY_ADDRESS = os.environ.get(
+    "AGENCY_ADDRESS", "Office No 5, Hyderabad Road, Mirpurkhas, Sindh"
+)
+PDF_FOOTER_TEXT = os.environ.get("PDF_FOOTER_TEXT", "Powered by Innosoft Technologies")
+
+AGENCY_CONFIG = {
+    "name": AGENCY_NAME,
+    "phone": AGENCY_PHONE,
+    "address": AGENCY_ADDRESS,
+    "footer_text": PDF_FOOTER_TEXT,
+}
+

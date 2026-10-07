@@ -1,20 +1,44 @@
-"""Custom Supabase JWT Authentication class for Django REST Framework."""
+"""Native Django JWT Authentication for Khas Travels Management System."""
 
+import datetime
 import logging
+import uuid
 import jwt
 from django.conf import settings
 from rest_framework import authentication, exceptions
-from .models import User, RoleChoices
+from .models import User
 
 logger = logging.getLogger(__name__)
 
 
-class SupabaseAuthentication(authentication.BaseAuthentication):
-    """Authenticate DRF requests by validating Supabase Auth JWT tokens.
+def generate_jwt_for_user(user: User, expiration_days: int = 30) -> str:
+    """Generates standard HS256 JWT signed with Django SECRET_KEY."""
+    jwt_secret = getattr(settings, "JWT_SECRET", settings.SECRET_KEY)
+    algorithm = getattr(settings, "JWT_ALGORITHM", "HS256")
+    now = datetime.datetime.now(datetime.timezone.utc)
+    exp = now + datetime.timedelta(days=expiration_days)
+
+    payload = {
+        "sub": str(user.id),
+        "user_id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "iat": int(now.timestamp()),
+        "exp": int(exp.timestamp()),
+    }
+    token = jwt.encode(payload, jwt_secret, algorithm=algorithm)
+    if isinstance(token, bytes):
+        token = token.decode("utf-8")
+    return token
+
+
+class JWTAuthentication(authentication.BaseAuthentication):
+    """Authenticate DRF requests by validating Django-issued JWT tokens.
 
     Extracts Bearer token from the 'Authorization' header, verifies the signature against
-    the Supabase JWT secret, extracts the user UID (`sub`), and retrieves or syncs
-    the corresponding Django User record.
+    Django's SECRET_KEY / JWT_SECRET, extracts the user ID, and retrieves the User from DB.
     """
 
     keyword = "Bearer"
@@ -41,98 +65,53 @@ class SupabaseAuthentication(authentication.BaseAuthentication):
         return self.authenticate_credentials(raw_token)
 
     def authenticate_credentials(self, raw_token: str):
-        jwt_secret = getattr(settings, "SUPABASE_JWT_SECRET", None)
-        if not jwt_secret:
-            logger.error("SUPABASE_JWT_SECRET is not configured in Django settings.")
-            raise exceptions.AuthenticationFailed(
-                "Authentication service misconfigured. Contact system administrator."
-            )
-
-        algorithm = getattr(settings, "SUPABASE_JWT_ALGORITHM", "HS256")
-        audience = getattr(settings, "SUPABASE_JWT_AUDIENCE", "authenticated")
+        jwt_secret = getattr(settings, "JWT_SECRET", settings.SECRET_KEY)
+        algorithm = getattr(settings, "JWT_ALGORITHM", "HS256")
 
         try:
-            # First attempt verification with audience
-            try:
-                payload = jwt.decode(
-                    raw_token,
-                    jwt_secret,
-                    algorithms=[algorithm],
-                    audience=audience,
-                    options={"verify_exp": True},
-                )
-            except jwt.InvalidAudienceError:
-                # Some Supabase setups do not set standard audience; fallback to signature verification
-                payload = jwt.decode(
-                    raw_token,
-                    jwt_secret,
-                    algorithms=[algorithm],
-                    options={"verify_exp": True, "verify_aud": False},
-                )
+            payload = jwt.decode(
+                raw_token,
+                jwt_secret,
+                algorithms=[algorithm],
+                options={"verify_exp": True, "verify_aud": False},
+            )
         except jwt.ExpiredSignatureError:
             raise exceptions.AuthenticationFailed("Authentication token has expired.")
         except jwt.InvalidTokenError as err:
-            logger.warning("Invalid Supabase JWT token: %s", err)
+            logger.warning("Invalid JWT token: %s", err)
             raise exceptions.AuthenticationFailed(f"Invalid authentication token: {str(err)}")
 
-        supabase_uid = payload.get("sub")
-        if not supabase_uid:
+        user_id = payload.get("user_id") or payload.get("sub")
+        if not user_id:
             raise exceptions.AuthenticationFailed("Token payload missing user identifier ('sub').")
 
-        # Extract user profile details from token claims
-        email = payload.get("email") or f"{supabase_uid}@placeholder.supabase.co"
-        user_metadata = payload.get("user_metadata") or {}
-        app_metadata = payload.get("app_metadata") or {}
-
-        # Determine role from metadata or fallback to default
-        raw_role = app_metadata.get("role") or user_metadata.get("role") or RoleChoices.AGENT
-        normalized_role = RoleChoices.AGENT
-        for choice in RoleChoices.values:
-            if choice.lower() == str(raw_role).lower():
-                normalized_role = choice
-                break
-
-        first_name = user_metadata.get("first_name", "")
-        last_name = user_metadata.get("last_name", "")
-        phone_number = user_metadata.get("phone", "")
-
-        # Synchronize Django User
+        # Resolve user by UUID primary key or legacy supabase_uid
+        user = None
         try:
-            user, created = User.objects.get_or_create(
-                supabase_uid=supabase_uid,
-                defaults={
-                    "email": email,
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "phone_number": phone_number,
-                    "role": normalized_role,
-                    "is_active": True,
-                },
-            )
+            val_uuid = uuid.UUID(str(user_id))
+            user = User.objects.filter(id=val_uuid).first()
+        except (ValueError, TypeError):
+            pass
 
-            # Update email or role if changed in Supabase
-            updated_fields = []
-            if user.email != email and email and not User.objects.filter(email=email).exclude(id=user.id).exists():
-                user.email = email
-                updated_fields.append("email")
-            if first_name and user.first_name != first_name:
-                user.first_name = first_name
-                updated_fields.append("first_name")
-            if last_name and user.last_name != last_name:
-                user.last_name = last_name
-                updated_fields.append("last_name")
+        if not user:
+            user = User.objects.filter(supabase_uid=str(user_id)).first()
 
-            if updated_fields:
-                user.save(update_fields=updated_fields)
+        if not user:
+            email = payload.get("email")
+            if email:
+                user = User.objects.filter(email__iexact=email).first()
 
-            if not user.is_active:
-                raise exceptions.AuthenticationFailed("User account is inactive or disabled.")
+        if not user:
+            raise exceptions.AuthenticationFailed("User not found in system database.")
 
-            return user, payload
+        if not user.is_active:
+            raise exceptions.AuthenticationFailed("User account is inactive or disabled.")
 
-        except Exception as exc:
-            logger.exception("Error synchronizing Supabase user: %s", exc)
-            raise exceptions.AuthenticationFailed("Could not resolve authenticated user account.")
+        return (user, payload)
 
     def authenticate_header(self, request):
         return self.keyword
+
+
+# Alias for seamless backwards compatibility
+SupabaseAuthentication = JWTAuthentication

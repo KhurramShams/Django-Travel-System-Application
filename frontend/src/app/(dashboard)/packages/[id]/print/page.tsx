@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { packagesApi } from "@/lib/api/travel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PDFHeader, PDFFooter } from "@/components/pdf";
 import {
   Printer,
   ArrowLeft,
@@ -105,39 +106,13 @@ export default function PackagePrintDossierPage({
 
       {/* Printable Package Dossier Sheet */}
       <div className="mx-auto max-w-5xl bg-white p-8 sm:p-12 shadow-lg rounded-2xl border border-slate-200 text-slate-900 print:shadow-none print:border-none print:p-0 print:max-w-none dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100">
-        {/* Agency Brand Header */}
-        <div className="flex justify-between items-start border-b-2 border-emerald-700 pb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-700 text-white">
-                <Plane className="h-5 w-5 -rotate-45" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                  Karwan-e-Asotvi Travels & Tours
-                </h1>
-                <p className="text-xs text-emerald-800 font-semibold dark:text-emerald-400">
-                  Government Certified Hajj & Umrah Travel Services • License # 4289
-                </p>
-              </div>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1 max-w-md">
-              Head Office: Al-Madinah Commercial Complex, Blue Area, Islamabad • Tel: +92 (51) 234-5678
-            </p>
-          </div>
-
-          <div className="text-right">
-            <span className="inline-block rounded-md bg-emerald-50 px-3 py-1 font-mono text-xs font-bold text-emerald-800 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300">
-              OFFICIAL PACKAGE DOSSIER
-            </span>
-            <p className="mt-1 text-[11px] text-slate-400">
-              Generated: {new Date().toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })}
-            </p>
-            <p className="text-[11px] font-mono text-slate-500">
-              Reference: {pkg.package_code}
-            </p>
-          </div>
-        </div>
+        {/* Unified Agency Header */}
+        <PDFHeader
+          docTitle="Official Package Dossier"
+          docNumber={`REF: ${pkg.package_code}`}
+          issueDate={new Date().toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })}
+          tagline="Government Certified Hajj & Umrah Travel Services • License # 4289"
+        />
 
         {/* Package Specifications Section */}
         <div className="mt-6 space-y-4">
@@ -326,28 +301,15 @@ export default function PackagePrintDossierPage({
           </div>
         </div>
 
-        {/* Verification Signatures & Stamp */}
-        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 grid grid-cols-3 gap-6 text-center text-xs break-inside-avoid">
-          <div>
-            <div className="h-14 border-b border-dashed border-slate-300 dark:border-slate-700 mb-1" />
-            <p className="font-bold text-slate-800 dark:text-slate-200">Prepared By</p>
-            <p className="text-[10px] text-slate-400">Operations Officer</p>
-          </div>
-          <div>
-            <div className="h-14 border-b border-dashed border-slate-300 dark:border-slate-700 mb-1" />
-            <p className="font-bold text-slate-800 dark:text-slate-200">Tour Manager</p>
-            <p className="text-[10px] text-slate-400">Karwan-e-Asotvi Travels</p>
-          </div>
-          <div>
-            <div className="h-14 border-b border-dashed border-slate-300 dark:border-slate-700 mb-1 flex items-center justify-center">
-              <span className="text-[10px] text-slate-300 uppercase tracking-widest font-mono">
-                [ OFFICIAL STAMP ]
-              </span>
-            </div>
-            <p className="font-bold text-slate-800 dark:text-slate-200">Authorized Signatory</p>
-            <p className="text-[10px] text-slate-400">Director of Operations</p>
-          </div>
-        </div>
+        {/* Unified Agency Footer & Signatures */}
+        <PDFFooter
+          signatures={[
+            { title: "Prepared By", subtitle: "Operations Officer" },
+            { title: "Tour Manager", subtitle: "Khas Travels" },
+            { title: "Official Stamp", subtitle: "Director of Operations", isStamp: true },
+          ]}
+          note="This is an official group travel package dossier. All itineraries and schedules are subject to visa clearance and flight availability."
+        />
       </div>
     </div>
   );

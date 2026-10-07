@@ -31,6 +31,7 @@ export default function HotelDirectoryPage() {
   const {
     data: bookings = [],
     isLoading: isBookingsLoading,
+    isFetching: isBookingsFetching,
     refetch,
   } = useQuery({
     queryKey: ["hotels", activeTab, searchTerm, locationFilter],
@@ -146,6 +147,7 @@ export default function HotelDirectoryPage() {
       <HotelTable
         bookings={bookings}
         isLoading={isBookingsLoading}
+        isFetching={isBookingsFetching}
         onRefresh={() => refetch()}
       />
     </div>

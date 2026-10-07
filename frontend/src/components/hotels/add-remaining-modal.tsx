@@ -10,6 +10,7 @@ import { HotelBooking, HotelPaymentMethod } from "@/types/hotels";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   X,
   CreditCard,
@@ -46,6 +47,7 @@ export function AddRemainingModal({
   onSuccess,
 }: AddRemainingModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const remainingBalance = Number(booking?.remaining_amount || 0);
@@ -68,7 +70,9 @@ export function AddRemainingModal({
   });
 
   const enteredAmount = watch("amount") || 0;
-  const projectedRemaining = Math.max(0, remainingBalance - enteredAmount);
+  const projectedRemaining = React.useMemo(() => {
+    return Math.max(0, remainingBalance - Number(enteredAmount));
+  }, [remainingBalance, enteredAmount]);
 
   const mutation = useMutation({
     mutationFn: (data: AddPaymentFormValues) => {
@@ -82,15 +86,16 @@ export function AddRemainingModal({
       });
     },
     onSuccess: () => {
+      toast.success("Hotel installment payment recorded successfully");
+      reset();
+      setServerError(null);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["hotels"] });
       if (booking?.id) {
         queryClient.invalidateQueries({ queryKey: ["hotel", booking.id] });
       }
       queryClient.invalidateQueries({ queryKey: ["hotel-summary"] });
-      reset();
-      setServerError(null);
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
       const msg =
@@ -267,20 +272,12 @@ export function AddRemainingModal({
               type="submit"
               variant="brand"
               size="sm"
-              disabled={mutation.isPending}
+              isLoading={mutation.isPending}
+              loadingText="Recording..."
               className="gap-1.5"
             >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Recording...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Record Payment
-                </>
-              )}
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Record Payment
             </Button>
           </CardFooter>
         </form>

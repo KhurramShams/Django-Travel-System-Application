@@ -6,6 +6,7 @@ import { hotelsApi } from "@/lib/api/hotels";
 import { HotelBooking } from "@/types/hotels";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { Trash2, AlertTriangle, X, Loader2 } from "lucide-react";
 
 interface DeleteHotelDialogProps {
@@ -22,6 +23,7 @@ export function DeleteHotelDialog({
   onSuccess,
 }: DeleteHotelDialogProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -30,11 +32,12 @@ export function DeleteHotelDialog({
       return hotelsApi.delete(booking.id);
     },
     onSuccess: () => {
+      toast.success("Hotel Booking Removed", "Reservation was deleted successfully.");
+      setError(null);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["hotels"] });
       queryClient.invalidateQueries({ queryKey: ["hotel-summary"] });
-      setError(null);
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
       const msg =
@@ -43,6 +46,7 @@ export function DeleteHotelDialog({
         err.message ||
         "Failed to delete hotel reservation.";
       setError(msg);
+      toast.error("Delete Failed", msg);
     },
   });
 
@@ -106,21 +110,13 @@ export function DeleteHotelDialog({
             type="button"
             variant="destructive"
             size="sm"
-            disabled={mutation.isPending}
+            isLoading={mutation.isPending}
+            loadingText="Deleting..."
             onClick={() => mutation.mutate()}
             className="gap-1.5"
           >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-3.5 w-3.5" />
-                Confirm Deletion
-              </>
-            )}
+            <Trash2 className="h-3.5 w-3.5" />
+            Confirm Deletion
           </Button>
         </CardFooter>
       </Card>

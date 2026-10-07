@@ -1,1 +1,1 @@
-"""Karwan apps package."""
+"""Khas Travels apps package."""

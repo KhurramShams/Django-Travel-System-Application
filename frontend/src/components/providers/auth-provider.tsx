@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { api } from "@/lib/api/client";
 import { UserProfile, UserRole, AuthSession, AuthContextType } from "@/types/auth";
 import { useRouter } from "next/navigation";
@@ -13,47 +12,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
-  const supabase = createClient();
 
   const fetchBackendProfile = useCallback(async () => {
     try {
       const profile = await api.get<UserProfile>("/auth/me/");
-      setUser(profile);
-      return profile;
-    } catch (err: unknown) {
-      console.warn("Could not fetch Django profile, checking sync fallback:", err);
-      // Fallback: If Django user was not found, attempt to sync from Supabase auth session
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
-
-      if (currentSession?.user) {
-        const authUser = currentSession.user;
-        const metadata = authUser.user_metadata || {};
-        const appMetadata = authUser.app_metadata || {};
-        const resolvedRole: UserRole =
-          appMetadata.role || metadata.role || "Agent";
-
-        try {
-          const syncRes = await api.post<{ user: UserProfile }>("/auth/sync/", {
-            supabase_uid: authUser.id,
-            email: authUser.email,
-            first_name: metadata.first_name || "",
-            last_name: metadata.last_name || "",
-            phone_number: metadata.phone || "",
-            role: resolvedRole,
-          });
-          if (syncRes?.user) {
-            setUser(syncRes.user);
-            return syncRes.user;
-          }
-        } catch (syncErr) {
-          console.error("Failed to sync user with backend:", syncErr);
-        }
+      if (profile) {
+        setUser(profile);
+        localStorage.setItem("auth_user", JSON.stringify(profile));
+        return profile;
       }
       return null;
+    } catch (err: unknown) {
+      console.warn("Could not fetch Django user profile:", err);
+      return null;
     }
-  }, [supabase]);
+  }, []);
 
   const refreshProfile = useCallback(async () => {
     await fetchBackendProfile();
@@ -64,39 +37,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function initializeAuth() {
       try {
-        // Priority 1: Check test auth credentials
-        const testToken = localStorage.getItem("test_auth_token");
-        const testUserStr = localStorage.getItem("test_auth_user");
-        if (testToken && testUserStr && mounted) {
-          try {
-            const parsedUser = JSON.parse(testUserStr) as UserProfile;
-            setUser(parsedUser);
-            setSession({
-              accessToken: testToken,
-              refreshToken: "test-refresh-token",
-              expiresAt: Math.floor(Date.now() / 1000) + 86400 * 30,
-            });
-            // Verify and refresh with backend
-            fetchBackendProfile().catch(() => {});
-            setIsLoading(false);
-            return;
-          } catch (e) {
-            console.error("Failed to parse test user:", e);
+        const token =
+          localStorage.getItem("auth_token") ||
+          localStorage.getItem("test_auth_token");
+
+        const cachedUserStr =
+          localStorage.getItem("auth_user") ||
+          localStorage.getItem("test_auth_user");
+
+        if (token && mounted) {
+          if (cachedUserStr) {
+            try {
+              const parsed = JSON.parse(cachedUserStr) as UserProfile;
+              setUser(parsed);
+            } catch (e) {
+              console.error("Failed to parse cached user:", e);
+            }
           }
-        }
 
-        // Priority 2: Check Supabase session
-        const {
-          data: { session: initialSession },
-        } = await supabase.auth.getSession();
-
-        if (initialSession && mounted) {
           setSession({
-            accessToken: initialSession.access_token,
-            refreshToken: initialSession.refresh_token,
-            expiresAt: initialSession.expires_at,
+            accessToken: token,
+            refreshToken: "native-session",
+            expiresAt: Math.floor(Date.now() / 1000) + 86400 * 30,
           });
 
+          // Fetch fresh profile from backend
           await fetchBackendProfile();
         }
       } catch (error) {
@@ -110,52 +75,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      if (!mounted) return;
-
-      // If test token is present, preserve it
-      if (localStorage.getItem("test_auth_token")) {
-        return;
-      }
-
-      if (newSession) {
-        setSession({
-          accessToken: newSession.access_token,
-          refreshToken: newSession.refresh_token,
-          expiresAt: newSession.expires_at,
-        });
-
-        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-          await fetchBackendProfile();
-        }
-      } else {
-        setSession(null);
-        setUser(null);
-      }
-      setIsLoading(false);
-    });
-
     return () => {
       mounted = false;
-      subscription.unsubscribe();
     };
-  }, [supabase, fetchBackendProfile]);
+  }, [fetchBackendProfile]);
 
   const signOut = async () => {
     try {
       setIsLoading(true);
-      // Clear test session
       if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
         localStorage.removeItem("test_auth_token");
         localStorage.removeItem("test_auth_user");
+        document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
         document.cookie = "test_auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       }
-      await supabase.auth.signOut();
       setUser(null);
       setSession(null);
       router.push("/login");
+      router.refresh();
     } catch (err) {
       console.error("Sign out error:", err);
     } finally {
@@ -164,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const role: UserRole | null = user?.role || null;
-  const isAuthenticated = !!session && !!user;
+  const isAuthenticated = Boolean(session && user);
 
   return (
     <AuthContext.Provider

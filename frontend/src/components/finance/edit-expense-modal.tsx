@@ -10,6 +10,7 @@ import { ExpenseCategory, OfficeExpense, PaymentMode } from "@/types/finance";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { Edit3, X, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 
 const editExpenseSchema = z.object({
@@ -47,6 +48,7 @@ export function EditExpenseModal({
   onSuccess,
 }: EditExpenseModalProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -78,15 +80,21 @@ export function EditExpenseModal({
       if (!expense) throw new Error("No expense selected");
       return officeExpensesApi.update(expense.id, data);
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      toast.success(
+        "Expense Updated",
+        `Updated details for ${updated.item_name} successfully.`
+      );
+      setServerError(null);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["office-expenses"] });
       queryClient.invalidateQueries({ queryKey: ["expense-summary"] });
-      setServerError(null);
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
-      setServerError(err.response?.data?.error?.message || err.message || "Failed to update expense.");
+      const msg = err.response?.data?.error?.message || err.message || "Failed to update expense.";
+      setServerError(msg);
+      toast.error("Update Failed", msg);
     },
   });
 
@@ -182,8 +190,14 @@ export function EditExpenseModal({
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="brand" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving..." : "Save Changes"}
+            <Button
+              type="submit"
+              variant="brand"
+              size="sm"
+              isLoading={mutation.isPending}
+              loadingText="Saving Changes..."
+            >
+              Save Changes
             </Button>
           </CardFooter>
         </form>

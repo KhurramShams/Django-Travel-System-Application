@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   ArrowLeft,
   Plane,
@@ -49,6 +50,7 @@ type TicketBookingFormValues = z.infer<typeof ticketBookingSchema>;
 
 export default function BookAgencyTicketPage() {
   const router = useRouter();
+  const toast = useToast();
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -73,8 +75,11 @@ export default function BookAgencyTicketPage() {
 
   const watchedTotalSeats = watch("total_tickets") || 1;
   const watchedTotalPrice = watch("total_price") || 0;
-  const perSeatEstimate =
-    watchedTotalSeats > 0 ? (watchedTotalPrice / watchedTotalSeats).toFixed(2) : "0.00";
+  const perSeatEstimate = React.useMemo(() => {
+    return watchedTotalSeats > 0
+      ? (watchedTotalPrice / watchedTotalSeats).toFixed(2)
+      : "0.00";
+  }, [watchedTotalSeats, watchedTotalPrice]);
 
   const onSubmit = async (data: TicketBookingFormValues) => {
     setIsSubmitting(true);
@@ -91,6 +96,10 @@ export default function BookAgencyTicketPage() {
         notes: data.notes?.trim() || "",
       });
 
+      toast.success(
+        "Ticket Booking Recorded",
+        `PNR: ${data.pnr_number.trim().toUpperCase()} recorded for ${data.total_tickets} seat(s).`
+      );
       router.push("/tickets");
     } catch (err: any) {
       console.error("Ticket issuance error:", err);
@@ -102,6 +111,7 @@ export default function BookAgencyTicketPage() {
         resData?.detail ||
         "Failed to issue agency ticket. Please review form inputs.";
       setServerError(msg);
+      toast.error("Booking Failed", msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -324,7 +334,13 @@ export default function BookAgencyTicketPage() {
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" variant="brand" size="sm" isLoading={isSubmitting}>
+            <Button
+              type="submit"
+              variant="brand"
+              size="sm"
+              isLoading={isSubmitting}
+              loadingText="Booking Ticket..."
+            >
               <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
               Save & Book AirLine Ticket
             </Button>

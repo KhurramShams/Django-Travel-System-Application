@@ -12,6 +12,8 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { getErrorMessage } from "@/lib/utils";
 import {
   UserMinus,
   X,
@@ -45,6 +47,7 @@ export function RemoveTravelerDialog({
   onSuccess,
 }: RemoveTravelerDialogProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [force, setForce] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -56,6 +59,9 @@ export function RemoveTravelerDialog({
       return enrollmentsApi.delete(enrollmentId, force);
     },
     onSuccess: () => {
+      toast.success("Traveler successfully removed from package");
+      onClose();
+      if (onSuccess) onSuccess();
       if (packageId) {
         queryClient.invalidateQueries({ queryKey: ["package-roster", packageId] });
         queryClient.invalidateQueries({ queryKey: ["package", packageId] });
@@ -67,18 +73,15 @@ export function RemoveTravelerDialog({
       queryClient.invalidateQueries({ queryKey: ["packages"] });
       queryClient.invalidateQueries({ queryKey: ["travelers"] });
       queryClient.invalidateQueries({ queryKey: ["enrollments"] });
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
       console.error("Failed to remove traveler from package:", err);
-      const res = err?.response?.data;
-      const msg =
-        res?.error?.message ||
-        res?.error ||
-        res?.detail ||
-        "Failed to remove traveler from enrolled package.";
+      const msg = getErrorMessage(
+        err,
+        "Failed to remove traveler from enrolled package."
+      );
       setErrorMessage(msg);
+      toast.error("Removal Failed", msg);
     },
   });
 
@@ -199,19 +202,12 @@ export function RemoveTravelerDialog({
             variant="destructive"
             size="sm"
             onClick={handleConfirm}
-            disabled={mutation.isPending || (hasPayments && !force)}
+            isLoading={mutation.isPending}
+            loadingText="Removing..."
+            disabled={hasPayments && !force}
           >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                Removing...
-              </>
-            ) : (
-              <>
-                <UserMinus className="mr-1.5 h-3.5 w-3.5" />
-                Remove from Package
-              </>
-            )}
+            <UserMinus className="mr-1.5 h-3.5 w-3.5" />
+            Remove from Package
           </Button>
         </CardFooter>
       </Card>

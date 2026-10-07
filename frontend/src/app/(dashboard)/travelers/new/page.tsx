@@ -11,6 +11,7 @@ import { TravelerLookup, AgeCategory } from "@/types/travel";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   Users,
   ArrowLeft,
@@ -40,6 +41,7 @@ type TravelerFormData = z.infer<typeof travelerSchema>;
 
 export default function NewTravelerPage() {
   const router = useRouter();
+  const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -132,6 +134,7 @@ export default function NewTravelerPage() {
       };
 
       const created = await travelersApi.create(payload as any);
+      toast.success("Traveler Registered", `${data.full_name} has been enrolled in Khas Travels.`);
       router.push(`/travelers/${created.id}`);
     } catch (err: any) {
       console.error("Traveler registration error:", err);
@@ -140,6 +143,7 @@ export default function NewTravelerPage() {
         err?.response?.data?.cnic?.[0] ||
         "Registration failed. Please verify submitted details.";
       setServerError(msg);
+      toast.error("Registration Failed", msg);
     } finally {
       setIsSubmitting(false);
     }

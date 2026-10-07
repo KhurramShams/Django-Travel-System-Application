@@ -13,6 +13,9 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/components/providers/auth-provider";
+import { getErrorMessage } from "@/lib/utils";
 import {
   AlertTriangle,
   X,
@@ -35,6 +38,9 @@ export function DeleteTicketDialog({
   onSuccess,
 }: DeleteTicketDialogProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { role } = useAuth();
+  const isAdmin = role === "Admin";
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -43,19 +49,20 @@ export function DeleteTicketDialog({
       return ticketsApi.delete(ticket.id);
     },
     onSuccess: () => {
+      toast.success("Ticket Deleted", `Ticket PNR ${ticket?.pnr_number} was deleted.`);
+      onClose();
+      if (onSuccess) onSuccess();
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticketing-kpi"] });
-      if (onSuccess) onSuccess();
-      onClose();
     },
     onError: (err: any) => {
       console.error("Failed to delete ticket:", err);
-      const res = err?.response?.data;
-      const msg =
-        res?.error ||
-        res?.detail ||
-        "Cannot delete ticket. It may have associated refund or financial records.";
+      const msg = getErrorMessage(
+        err,
+        "Cannot delete ticket. It may have associated refund or financial records."
+      );
       setErrorMessage(msg);
+      toast.error("Delete Failed", msg);
     },
   });
 
@@ -142,6 +149,18 @@ export function DeleteTicketDialog({
             </div>
           )}
 
+          {!isAdmin && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+              <p className="font-semibold text-xs flex items-center gap-1">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                Administrator Privileges Required
+              </p>
+              <p className="text-[11px] mt-0.5">
+                Only Administrator accounts are permitted to permanently void or delete flight tickets from inventory.
+              </p>
+            </div>
+          )}
+
           <p className="text-[11px] text-slate-400">
             This action cannot be undone. All seat quotas associated with this PNR will be removed from inventory.
           </p>
@@ -162,19 +181,12 @@ export function DeleteTicketDialog({
             variant="destructive"
             size="sm"
             onClick={handleDelete}
-            disabled={mutation.isPending}
+            disabled={!isAdmin || hasRefunds || mutation.isPending}
+            isLoading={mutation.isPending}
+            loadingText="Deleting..."
           >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                Delete Ticket
-              </>
-            )}
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Delete Ticket
           </Button>
         </CardFooter>
       </Card>

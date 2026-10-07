@@ -12,6 +12,7 @@ import { PaymentMode, TransactionType } from "@/types/finance";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import {
   CreditCard,
   ArrowLeft,
@@ -41,6 +42,7 @@ type RecordPaymentFormValues = z.infer<typeof recordPaymentSchema>;
 
 export default function RecordPaymentPage() {
   const router = useRouter();
+  const toast = useToast();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -87,13 +89,19 @@ export default function RecordPaymentPage() {
         payment_date: data.payment_date,
         notes: data.notes || undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (payment) => {
       queryClient.invalidateQueries({ queryKey: ["office-payments"] });
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
+      toast.success(
+        "Payment Recorded",
+        `PKR ${Number(payment.amount).toLocaleString()} (${payment.transaction_type}) logged successfully.`
+      );
       router.push("/finance/payments");
     },
     onError: (err: any) => {
-      setServerError(err.response?.data?.error?.message || err.message || "Failed to record payment.");
+      const msg = err.response?.data?.error?.message || err.message || "Failed to record payment.";
+      setServerError(msg);
+      toast.error("Payment Failed", msg);
     },
   });
 
@@ -333,20 +341,12 @@ export default function RecordPaymentPage() {
               type="submit"
               variant="brand"
               size="sm"
-              disabled={mutation.isPending}
+              isLoading={mutation.isPending}
+              loadingText="Recording Transaction..."
               className="gap-1.5"
             >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Recording Transaction...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Save & Update Balance
-                </>
-              )}
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Save & Update Balance
             </Button>
           </CardFooter>
         </Card>

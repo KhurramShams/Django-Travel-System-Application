@@ -239,7 +239,7 @@ export default function OfficePaymentsPage() {
                 <Input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="e.g. Asotvi, KB-PAY-2026..."
+                  placeholder="e.g. Khas, KH-PAY-2026..."
                   className="pl-8 text-xs h-8"
                 />
               </div>
@@ -329,7 +329,12 @@ export default function OfficePaymentsPage() {
       </Card>
 
       {/* Ledger Table */}
-      <PaymentTable payments={payments} isLoading={isLoading} onRefresh={() => refetch()} />
+      <PaymentTable
+        payments={payments}
+        isLoading={isLoading}
+        isFetching={isFetching}
+        onRefresh={() => refetch()}
+      />
 
       {/* Quick Lookup Drawer */}
       <PaymentSearchDrawer
