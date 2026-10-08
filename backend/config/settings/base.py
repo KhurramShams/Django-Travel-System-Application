@@ -146,7 +146,7 @@ JWT_ALGORITHM = "HS256"
 
 # CORS Configuration
 raw_cors = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
+CORS_ALLOWED_ORIGINS = [origin.strip().rstrip("/") for origin in raw_cors.split(",") if origin.strip()]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     "accept",
