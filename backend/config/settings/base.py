@@ -15,9 +15,9 @@ SECRET_KEY = os.environ.get(
     "django-insecure-default-dev-key-change-in-production-khas-travels",
 )
 
-DEBUG = False
-
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+raw_hosts = os.environ.get("ALLOWED_HOSTS", "*")
+parsed_hosts = [h.strip() for h in raw_hosts.split(",") if h.strip()]
+ALLOWED_HOSTS = list(set(parsed_hosts + [".vercel.app", "*", "localhost", "127.0.0.1"]))
 
 # Application definition
 DJANGO_APPS = [
