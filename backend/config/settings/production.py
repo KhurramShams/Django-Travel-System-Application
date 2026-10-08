@@ -7,11 +7,17 @@ DEBUG = False
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-khas-travels-production-build-key")
 
-raw_hosts = os.environ.get("ALLOWED_HOSTS", "*,.vercel.app,localhost,127.0.0.1")
-ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
+# Allowed Hosts: Ensure all Vercel domains, preview URLs, custom domains, and localhost are permitted
+raw_hosts = os.environ.get("ALLOWED_HOSTS", "*")
+parsed_hosts = [h.strip() for h in raw_hosts.split(",") if h.strip()]
+ALLOWED_HOSTS = list(set(parsed_hosts + [".vercel.app", "*", "localhost", "127.0.0.1"]))
+
+# Reverse Proxy & Host Header settings for Vercel
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 # CSRF Trusted Origins for Vercel and production domains
-raw_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "https://*.vercel.app")
+raw_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "https://*.vercel.app,http://localhost:3000,https://localhost:3000")
 CSRF_TRUSTED_ORIGINS = [o.strip().rstrip("/") for o in raw_csrf.split(",") if o.strip()]
 
 # Static files serving with WhiteNoise
@@ -22,7 +28,8 @@ WHITENOISE_MANIFEST_STRICT = False
 
 # Security enhancements
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True").lower() == "true"
+# Vercel handles SSL termination natively at the edge. Default False to avoid proxy redirect loops
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() == "true"
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000
@@ -32,7 +39,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
 # CORS configuration for Vercel deployments
-CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower() == "true"
+CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "True").lower() == "true"
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https:\/\/.*\.vercel\.app$",
 ]
