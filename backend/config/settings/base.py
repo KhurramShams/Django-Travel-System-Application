@@ -80,14 +80,16 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # Database
-# Default to SQLite for local bootstrap if DATABASE_URL is not set, otherwise connect to PostgreSQL/Supabase
+# Default to SQLite for local bootstrap if DATABASE_URL is not set, otherwise connect to PostgreSQL (Neon / Supabase)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL:
+    is_pooler = "pooler" in DATABASE_URL
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=0 if is_pooler else 600,
             conn_health_checks=True,
+            disable_server_side_cursors=is_pooler,
         )
     }
 else:

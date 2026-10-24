@@ -32,3 +32,8 @@ next-env.d.ts
 .idea/
 .DS_Store
 Thumbs.db
+docs/
+FEATURES.md
+MODULE_2_CHANGES.md
+MODULE_3_CHANGES.md
+SYSTEM_ARCHITECTURE.md
