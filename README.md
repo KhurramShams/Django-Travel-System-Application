@@ -325,39 +325,7 @@ khas-travels/
 
 ---
 
-## 6. Environment Variables Reference
-
-### Backend Configuration (`backend/.env`)
-
-| Variable | Type | Required | Default / Example | Purpose |
-| :--- | :---: | :---: | :--- | :--- |
-| `DJANGO_SETTINGS_MODULE` | String | Yes | `config.settings.local` | Determines settings file (`local` or `production`) |
-| `SECRET_KEY` | String | Yes | `khas-secret-key-change-me` | Django cryptographic signing key |
-| `DEBUG` | Boolean | Yes | `True` (dev) / `False` (prod) | Enables debug tracebacks in development |
-| `ALLOWED_HOSTS` | String | Yes | `localhost,127.0.0.1` | Comma-separated list of valid host domains |
-| `DATABASE_URL` | String | Yes | `postgresql://user:pass@host:5432/db?sslmode=require` | Connection URI for PostgreSQL database |
-| `JWT_SECRET` | String | Yes | `khas-jwt-secret-signing-key` | Secret key used to sign and verify user JWTs |
-| `CORS_ALLOWED_ORIGINS` | String | Yes | `http://localhost:3000,http://127.0.0.1:3000` | Authorized frontend origins permitted for CORS |
-| `AGENCY_NAME` | String | No | `"Khas Travels"` | Agency business name |
-| `AGENCY_PHONE` | String | No | `"0334-3020868"` | Primary agency contact phone |
-| `AGENCY_ADDRESS` | String | No | `"Office No 5, Hyderabad Road, Mirpurkhas, Sindh"` | Official agency physical address |
-| `PDF_FOOTER_TEXT` | String | No | `"Powered by Innosoft Technologies"` | Attribution displayed on report footers |
-
-### Frontend Configuration (`frontend/.env.local`)
-
-| Variable | Type | Required | Default / Example | Purpose |
-| :--- | :---: | :---: | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | String | Yes | `http://localhost:8000/api/v1` | Base URL for Django REST API endpoints |
-| `NEXT_PUBLIC_DJANGO_API_URL` | String | No | `http://localhost:8000/api/v1` | Direct API endpoint alias |
-| `NEXT_PUBLIC_APP_NAME` | String | No | `"Khas Travels"` | Application brand title |
-| `NEXT_PUBLIC_AGENCY_NAME` | String | Yes | `"Khas Travels"` | Header brand title in web views & PDF documents |
-| `NEXT_PUBLIC_AGENCY_PHONE` | String | Yes | `"0334-3020868"` | Official contact number printed on invoices |
-| `NEXT_PUBLIC_AGENCY_ADDRESS` | String | Yes | `"Office No 5, Hyderabad Road, Mirpurkhas, Sindh"` | Official address printed on documents |
-| `NEXT_PUBLIC_PDF_FOOTER_TEXT` | String | Yes | `"Powered by Innosoft Technologies"` | Attribution printed in invoice & voucher footers |
-
----
-
-## 7. Testing, Health Checks & Seeding
+## 6. Testing, Health Checks & Seeding
 
 ### Backend Health Check Endpoint
 The backend includes a dedicated zero-dependency health check endpoint that tests live database connectivity:
@@ -375,24 +343,7 @@ GET /api/v1/health/
 }
 ```
 
-### Seeding Test Data
-Two comprehensive seeding scripts populate realistic operational data:
-
-1. **Travelers & Packages:**
-   ```bash
-   python seed_data.py
-   ```
-   *Populates 10 realistic Pakistani travelers (Adults, Children, Infants with CNICs), 5 packages (3-star, 4-star, 5-star), package enrollments, and payment installments.*
-
-2. **Hotels & Airline Tickets:**
-   ```bash
-   python seed_hotels_tickets.py
-   ```
-   *Populates Makkah/Madinah hotel reservations with advance/remaining payment records, along with agency wholesale flight tickets, PNRs, and refund penalty logs.*
-
----
-
-## 8. Production Deployment & Verification Audit
+## 7. Production Deployment & Verification Audit
 
 Before triggering deployment builds or pushing updates to production, execute the pre-flight verification suite:
 
@@ -429,15 +380,6 @@ For containerized or VPS deployments, run Gunicorn using production settings:
 export DJANGO_SETTINGS_MODULE=config.settings.production
 gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
 ```
-
-### 4. Docker Production Build
-To build and run the production backend container:
-```bash
-cd backend
-docker build -t khas-travels-backend:latest .
-docker run -d -p 8000:8000 --env-file .env khas-travels-backend:latest
-```
-
 ---
 
 ## License & Support
